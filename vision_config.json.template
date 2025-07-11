@@ -1,0 +1,48 @@
+{
+  "vision": {
+    "openai_api_key": "YOUR_OPENAI_API_KEY_HERE",
+    "model_name": "gpt-4-vision-preview",
+    "max_tokens": 3500,
+    "temperature": 0.1,
+    "analysis_prompt_template": "",
+    "enable_batch_analysis": true,
+    "batch_size": 3,
+    "rate_limit_delay": 2.0
+  },
+  "screenshot": {
+    "window_title": "TradingView",
+    "chart_region": null,
+    "capture_interval": 30,
+    "save_screenshots": true,
+    "screenshot_directory": "qnti_screenshots",
+    "max_screenshots": 1000
+  },
+  "symbols": {
+    "primary": ["EURUSD", "GBPUSD", "USDJPY"],
+    "secondary": ["USDCHF", "AUDUSD", "USDCAD"],
+    "timeframes": ["M15", "H1", "H4", "D1"]
+  },
+  "trading_rules": {
+    "min_confidence": 0.7,
+    "max_risk_per_trade": 0.02,
+    "min_risk_reward": 1.5,
+    "enable_auto_trading": false,
+    "require_manual_approval": true
+  },
+  "api_keys": {
+    "news_api": "YOUR_NEWS_API_KEY_HERE",
+    "alpha_vantage": "YOUR_ALPHA_VANTAGE_KEY_HERE",
+    "finnhub": "YOUR_FINNHUB_KEY_HERE",
+    "trading_economics": "YOUR_TRADING_ECONOMICS_KEY_HERE",
+    "reddit_client_id": "YOUR_REDDIT_CLIENT_ID_HERE",
+    "reddit_client_secret": "YOUR_REDDIT_CLIENT_SECRET_HERE",
+    "reddit_user_agent": "YOUR_REDDIT_USER_AGENT_HERE",
+    "reddit_username": "YOUR_REDDIT_USERNAME_HERE",
+    "reddit_password": "YOUR_REDDIT_PASSWORD_HERE",
+    "twitter_client_id": "YOUR_TWITTER_CLIENT_ID_HERE",
+    "twitter_client_secret": "YOUR_TWITTER_CLIENT_SECRET_HERE",
+    "twitter_bearer_token": "YOUR_TWITTER_BEARER_TOKEN_HERE",
+    "polygon_io": "YOUR_POLYGON_IO_KEY_HERE",
+    "twelve_data": "YOUR_TWELVE_DATA_KEY_HERE"
+  }
+} 

@@ -10,7 +10,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Callable, Any
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from enum import Enum
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -57,10 +57,10 @@ class NotificationEvent:
 class NotificationConfig:
     """Notification configuration"""
     enabled: bool = True
-    channels: Dict[str, Dict] = None
-    rules: Dict[str, Dict] = None
-    rate_limits: Dict[str, int] = None
-    escalation_rules: List[Dict] = None
+    channels: Optional[Dict[str, Dict]] = field(default_factory=dict)
+    rules: Optional[Dict[str, Dict]] = field(default_factory=dict)
+    rate_limits: Optional[Dict[str, int]] = field(default_factory=dict)
+    escalation_rules: Optional[List[Dict]] = field(default_factory=list)
 
 class QNTINotificationSystem:
     """Advanced notification system for QNTI trading platform"""
@@ -244,7 +244,7 @@ class QNTINotificationSystem:
             del self.rate_limit_tracker[key]
     
     def send_notification(self, title: str, message: str, level: NotificationLevel, 
-                         category: str, data: Dict = None, channels: List[str] = None):
+                         category: str, data: Optional[Dict] = None, channels: Optional[List[str]] = None):
         """Send a notification"""
         if not self.config.enabled:
             return
@@ -254,16 +254,17 @@ class QNTINotificationSystem:
         
         # Determine channels based on rules
         if not channels:
-            rule = self.config.rules.get(category, {})
+            rule = self.config.rules.get(category, {}) if self.config.rules else {}
             channels = rule.get('channels', ['webhook'])
         
         # Convert string channels to enum
         channel_enums = []
-        for ch in channels:
-            try:
-                channel_enums.append(NotificationChannel(ch))
-            except ValueError:
-                logger.warning(f"Unknown notification channel: {ch}")
+        if channels:
+            for ch in channels:
+                try:
+                    channel_enums.append(NotificationChannel(ch))
+                except ValueError:
+                    logger.warning(f"Unknown notification channel: {ch}")
         
         # Create event
         event = NotificationEvent(
@@ -284,6 +285,8 @@ class QNTINotificationSystem:
     def _send_email(self, event: NotificationEvent) -> bool:
         """Send email notification"""
         try:
+            if not self.config.channels:
+                return False
             email_config = self.config.channels.get('email', {})
             if not email_config.get('enabled', False):
                 return False
@@ -328,6 +331,8 @@ Quantum Nexus Trading Intelligence
     def _send_webhook(self, event: NotificationEvent) -> bool:
         """Send webhook notification"""
         try:
+            if not self.config.channels:
+                return False
             webhook_config = self.config.channels.get('webhook', {})
             if not webhook_config.get('enabled', False):
                 return False
@@ -360,6 +365,8 @@ Quantum Nexus Trading Intelligence
     def _send_discord(self, event: NotificationEvent) -> bool:
         """Send Discord notification"""
         try:
+            if not self.config.channels:
+                return False
             discord_config = self.config.channels.get('discord', {})
             if not discord_config.get('enabled', False):
                 return False
@@ -411,6 +418,8 @@ Quantum Nexus Trading Intelligence
     def _send_slack(self, event: NotificationEvent) -> bool:
         """Send Slack notification"""
         try:
+            if not self.config.channels:
+                return False
             slack_config = self.config.channels.get('slack', {})
             if not slack_config.get('enabled', False):
                 return False
