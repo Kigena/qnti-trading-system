@@ -1,0 +1,1 @@
+web: python mock_qnti_server.py

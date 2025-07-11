@@ -201,6 +201,14 @@ Generated automatically:
 
 ---
 
+## 🚀 **DEPLOY LIVE INSTANTLY**
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https://github.com/kigen/qnti-trading-system)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/kigen/qnti-trading-system)
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/kigen/qnti-trading-system)
+
+**Click any button above to deploy your QNTI system live on the internet in under 5 minutes!**
+
 **🎯 Ready to test? Start with:**
 ```bash
 python demo_automation.py

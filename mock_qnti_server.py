@@ -303,24 +303,35 @@ def create_app() -> web.Application:
 
 async def main():
     """Main entry point"""
+    import os
+    
     app = create_app()
     
-    print("🚀 Starting Mock QNTI Server...")
-    print("📍 Server will be available at: http://localhost:5000")
-    print("🔗 Dashboard: http://localhost:5000")
-    print("🤖 EA Generation: http://localhost:5000/ea-generation")
-    print("📊 Health Check: http://localhost:5000/api/system/health")
-    print("\nPress Ctrl+C to stop the server")
+    # Get port from environment (for cloud deployment)
+    port = int(os.environ.get('PORT', 5000))
+    host = '0.0.0.0'  # Bind to all interfaces for cloud deployment
+    
+    print("🚀 Starting QNTI Server...")
+    print(f"📍 Server will be available at: http://{host}:{port}")
+    print(f"🔗 Dashboard: http://{host}:{port}")
+    print(f"🤖 EA Generation: http://{host}:{port}/ea-generation")
+    print(f"📊 Health Check: http://{host}:{port}/api/system/health")
+    
+    if os.environ.get('PORT'):
+        print("☁️ Running in cloud deployment mode")
+    else:
+        print("🖥️ Running in local development mode")
+        print("\nPress Ctrl+C to stop the server")
     
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, 'localhost', 5000)
+    site = web.TCPSite(runner, host, port)
     await site.start()
     
     try:
         await asyncio.Future()  # Run forever
     except KeyboardInterrupt:
-        print("\n🛑 Shutting down Mock QNTI Server...")
+        print("\n🛑 Shutting down QNTI Server...")
         await runner.cleanup()
 
 if __name__ == '__main__':

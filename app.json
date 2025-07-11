@@ -1,0 +1,27 @@
+{
+  "name": "QNTI Trading System",
+  "description": "🚀 Advanced EA Generation System with Comprehensive Automation Testing - 48 automation capabilities, stress testing, and real-time performance monitoring",
+  "repository": "https://github.com/kigen/qnti-trading-system",
+  "keywords": ["trading", "automation", "ea-generation", "python", "forex", "testing", "stress-testing"],
+  "env": {
+    "PORT": {
+      "description": "Port for the web server",
+      "value": "5000"
+    },
+    "PYTHON_VERSION": {
+      "description": "Python version",
+      "value": "3.11"
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "free"
+    }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ]
+}
