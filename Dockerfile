@@ -169,14 +169,14 @@ FROM dependencies as development
 
 # Install development dependencies
 RUN pip install --no-cache-dir \
-    pytest \
-    pytest-cov \
-    black \
-    flake8 \
-    mypy \
-    ipython \
-    jupyter \
-    debug-toolbar
+    pytest>=7.0.0 \
+    pytest-cov>=4.0.0 \
+    black>=23.0.0 \
+    flake8>=6.0.0 \
+    mypy>=1.0.0 \
+    ipython>=8.0.0 \
+    jupyter>=1.0.0 \
+    flask-debug-toolbar>=0.13.0
 
 # Copy source code
 COPY . .
