@@ -176,7 +176,7 @@ RUN pip install --no-cache-dir \
     mypy>=1.0.0 \
     ipython>=8.0.0 \
     jupyter>=1.0.0 \
-    flask-debug-toolbar>=0.13.0
+    flask-debugtoolbar>=0.13.0
 
 # Copy source code
 COPY . .
