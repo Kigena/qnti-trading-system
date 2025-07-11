@@ -1,0 +1,80 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+qnti_automation_env/
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+nohup.out
+
+# Test Reports and Results
+qnti_simulation_report_*.json
+qnti_stress_test_report_*.json
+qnti_full_simulation_report_*.json
+qnti_automation_demo_*.json
+simple_automation_test_*.json
+
+# Screenshots
+*.png
+screenshots/
+
+# Automation Results
+automation_results/
+load_test_results/
+
+# Database
+*.db
+*.sqlite3
+
+# Config files with sensitive data
+config.json
+config_local.json
+.env
+
+# Cache
+.cache/
+.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# MetaTrader
+*.ex4
+*.ex5
+MQL4/
+MQL5/
+
+# Temporary files
+temp/
+tmp/

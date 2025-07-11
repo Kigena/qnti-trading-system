@@ -1,0 +1,496 @@
+{
+  "name": "GOLDEN STREAK",
+  "magic_number": 12345,
+  "symbols": [
+    "GET"
+  ],
+  "timeframes": [
+    "M15"
+  ],
+  "parameters": {
+    "_Properties_": "------",
+    "Magic_Number": 1224727994,
+    "Entry_Amount": 0.01,
+    "Stop_Loss": 1053,
+    "Take_Profit": 0,
+    "___0______": "------",
+    "Ind0Param0": 0,
+    "___1______": "------",
+    "Ind1Param0": 39,
+    "Ind1Param1": 0,
+    "___2______": "------",
+    "Ind2Param0": 30,
+    "Ind2Param1": 3.4,
+    "___3______": "------",
+    "Ind3Param0": 22,
+    "Ind3Param1": 7,
+    "Entry_prot__": "------",
+    "Max_Spread": 0,
+    "Max_OpenPos": 0,
+    "Max_OpenLots": 0,
+    "Daily_prot__": "------",
+    "MaxDailyLoss": 0,
+    "Max_Daily_DD": 0,
+    "Daily_Reset": 0,
+    "Account_prot": "------",
+    "Min_Equity": 0,
+    "MaxEquity_DD": 0,
+    "Max_Equity": 0,
+    "_NewsFilter_": "------",
+    "News_Priority": "NewsFilter_Disabled",
+    "News_Currencies": "USD,EUR,JPY,GBP,CHF",
+    "News_BeforeMedium": 2,
+    "News_AfterMedium": 2,
+    "News_BeforeHigh": 2,
+    "News_AfterHigh": 5,
+    "News_ViewCount": 10,
+    "_Settings___": "------",
+    "Show_inds": false,
+    "__Stats_____": "------",
+    "Pos_Stat": true,
+    "Robot_Stats": true
+  },
+  "original_code": "/**\n * EA Studio Expert Advisor\n *\n * Exported from Expert Advisor Studio\n * MQL base code updated on 2025-06-09\n * Website https://eas.forexsb.com\n *\n * Copyright 2025, Forex Software Ltd.\n *\n * Risk Disclosure\n *\n * Futures and forex trading contains substantial risk and is not for every investor.\n * An investor could potentially lose all or more than the initial investment.\n * Risk capital is money that can be lost without jeopardizing ones\u2019 financial security or life style.\n * Only risk capital should be used for trading and only those with sufficient risk capital should consider trading.\n */\n\n#property copyright \"Forex Software Ltd.\"\n#property version   \"6.3\"\n#property strict\n\nstatic input string _Properties_ = \"------\"; // --- Expert Properties ---\nstatic input int    Magic_Number = 1224727994; // Magic number\nstatic input double Entry_Amount =     0.01; // Entry lots\n       input int    Stop_Loss    =     1053; // Stop Loss   (pips)\n       input int    Take_Profit  =        0; // Take Profit (pips)\n\nstatic input string ___0______   = \"------\"; // --- Accelerator Oscillator ---\n       input double Ind0Param0   =   0.0000; // Level\n\nstatic input string ___1______   = \"------\"; // --- Bulls Power ---\n       input int    Ind1Param0   =       39; // Period\n       input double Ind1Param1   =   0.0000; // Level\n\nstatic input string ___2______   = \"------\"; // --- Bears Power ---\n       input int    Ind2Param0   =       30; // Period\n       input double Ind2Param1   =   3.4000; // Level\n\nstatic input string ___3______   = \"------\"; // --- Candle Color ---\n       input int    Ind3Param0   =       22; // Min body height [pips]\n       input int    Ind3Param1   =        7; // Consecutive candles\n\n\nstatic input string Entry_prot__ = \"------\"; // --- Entry Protections ---\nstatic input int    Max_Spread   =        0; // Max spread (points)\nstatic input int    Max_OpenPos  =        0; // Max open positions (all experts)\nstatic input double Max_OpenLots =     0.00; // Max open lots (all experts)\n\nstatic input string Daily_prot__ = \"------\"; // --- Daily Protections ---\nstatic input int    MaxDailyLoss =        0; // Maximum daily loss (currency)\nstatic input double Max_Daily_DD =     0.00; // Maximum daily drawdown %\nstatic input int    Daily_Reset  =        0; // Daily reset hour (terminal time)\n\nstatic input string Account_prot = \"------\"; // --- Account Protections ---\nstatic input int    Min_Equity   =        0; // Minimum equity (currency)\nstatic input double MaxEquity_DD =     0.00; // Maximum equity drawdown %\nstatic input int    Max_Equity   =        0; // Maximum equity (currency)\n\nstatic input string _NewsFilter_ = \"------\"; // --- News Filter ---\nenum NewsFilterPriority\n  {\n   NewsFilter_Disabled,     // News filter disabled\n   NewsFilter_HighOnly,     // High news filter\n   NewsFilter_HighAndMedium // Medium and High news filter\n  };\nstatic input NewsFilterPriority News_Priority = NewsFilter_Disabled;       // News priority\nstatic input string News_Currencies   = \"USD,EUR,JPY,GBP,CHF\"; // News currencies\nstatic input int    News_BeforeMedium =  2; // Before Medium news (minutes)\nstatic input int    News_AfterMedium  =  2; // After Medium news (minutes)\nstatic input int    News_BeforeHigh   =  2; // Before High news (minutes)\nstatic input int    News_AfterHigh    =  5; // After High news (minutes)\nstatic input int    News_ViewCount    = 10; // News records to show\n\nstatic input string _Settings___ = \"------\"; // --- Settings ---\nstatic input bool   Show_inds    =    false; // Show indicators\n\nstatic input string __Stats_____ = \"------\"; // --- Stats ---\nstatic input bool   Pos_Stat     =     true; // Position stats\nstatic input bool   Robot_Stats  =     true; // Trading stats\n\n#define TRADE_RETRY_COUNT   4\n#define TRADE_RETRY_WAIT  100\n#define OP_FLAT            -1\n#define OP_BUY            ORDER_TYPE_BUY\n#define OP_SELL           ORDER_TYPE_SELL\n\nstring robotTagline  = \"An Expert Advisor from Expert Advisor Studio\";\n\n// Session time is set in seconds from 00:00\nconst int  sessionSundayOpen          =     0; // 00:00\nconst int  sessionSundayClose         = 86400; // 24:00\nconst int  sessionMondayThursdayOpen  =     0; // 00:00\nconst int  sessionMondayThursdayClose = 86400; // 24:00\nconst int  sessionFridayOpen          =     0; // 00:00\nconst int  sessionFridayClose         = 86400; // 24:00\nconst bool sessionIgnoreSunday        = false;\nconst bool sessionCloseAtSessionClose = false;\nconst bool sessionCloseAtFridayClose  = false;\n\nconst double sigma = 0.000001;\n\nint    posType       = OP_FLAT;\nulong  posTicket     = 0;\ndouble posLots       = 0;\ndouble posStopLoss   = 0;\ndouble posTakeProfit = 0;\ndouble posProfit     = 0;\ndouble posPriceOpen  = 0;\ndouble posPriceCurr  = 0;\n\ndatetime lastStatsUpdate = 0;\ndatetime barTime;\ndouble   pip;\ndouble   stopLevel;\nbool     isTrailingStop=false;\nint      indHandlers[1][12][2];\n\nint    maxRectangles = 0;\nint    maxLabels     = 0;\nint    posStatCount  = 0;\ndouble posStatLots   = 0;\n\nstring accountProtectionMessage = \"\";\nstring entryProtectionMessage   = \"\";\n\nstruct NewsRecord\n  {\n   datetime time;\n   string   priority;\n   string   currency;\n   string   title;\n  };\n\nNewsRecord newsRecords[];\nstring   newsCurrencies[];\ndatetime lastNewsUpdate = 0;\nstring   loadNewsError  = \"\";\nbool     isNewsFeedOk   = true;\n\nstring   accMaxEquityGlobalVarName       = \"accMaxEquity123456789\";\nstring   accMaxDailyBalanceGlobalVarName = \"accMaxDailyBalance123456789\";\nstring   accMaxDailyEquityGlobalVarName  = \"accMaxDailyEquity123456789\";\nstring   accEntrySuspendGlobalVarName    = \"accEntrySuspend123456789\";\ndouble   equityDrawdownPercent           = 0;\ndatetime dailyDrawdownLastReset          = 0;\ndouble   dailyLoss                       = 0;\ndouble   dailyDrawdown                   = 0;\n\nENUM_ORDER_TYPE_FILLING orderFillingType = ORDER_FILLING_FOK;\n\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nint OnInit(void)\n  {\n   Comment(\"\");\n   DeleteObjects();\n\n   barTime         = Time(0);\n   stopLevel       = (int) SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);\n   pip             = GetPipValue();\n   isTrailingStop  = isTrailingStop && Stop_Loss > 0;\n   lastStatsUpdate = 0;\n\n   accountProtectionMessage = \"\";\n   entryProtectionMessage   = \"\";\n\n   InitGlobalVariables();\n   InitIndicators();\n   UpdatePosition();\n\n   ParseNewsCurrenciesText();\n   lastNewsUpdate = TimeCurrent();\n   if(!MQLInfoInteger(MQL_TESTER))\n      LoadNews();\n\n   OnTick();\n   ChartRedraw(0);\n\n   return INIT_SUCCEEDED;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid OnDeinit(const int reason)\n  {\n   if(Show_inds)\n      RemoveIndicators();\n\n   DeleteObjects();\n\n   if(accountProtectionMessage != \"\")\n      Comment(accountProtectionMessage);\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid OnTick(void)\n  {\n   if(!MQLInfoInteger(MQL_TESTER))\n     {\n      UpdatePosition();\n      UpdateAccountProtection();\n      CheckAccountProtection();\n\n      const datetime time = TimeCurrent();\n      if(time > lastStatsUpdate + 3)\n        {\n         lastStatsUpdate = time;\n         if(Max_OpenPos > sigma || Max_OpenLots > sigma)\n            SetPosStats();\n\n         UpdateStats();\n        }\n\n      if(time > lastNewsUpdate + 6*60*60 || !isNewsFeedOk)\n        {\n         lastNewsUpdate = time;\n         LoadNews();\n        }\n     }\n\n   const datetime time = Time(0);\n   if(time > barTime)\n     {\n      barTime = time;\n      OnBar();\n     }\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid OnBar(void)\n  {\n   UpdatePosition();\n\n   if(posType != OP_FLAT && IsForceSessionClose())\n     {\n      ClosePosition();\n      return;\n     }\n\n   if(IsOutOfSession())\n      return;\n\n   if(posType != OP_FLAT)\n     {\n      ManageClose();\n      UpdatePosition();\n     }\n\n   if(posType != OP_FLAT && isTrailingStop)\n     {\n      const double trailingStop = GetTrailingStopPrice();\n      ManageTrailingStop(trailingStop);\n      UpdatePosition();\n     }\n\n   int entrySignal = GetEntrySignal();\n\n   if ((posType == OP_BUY  && entrySignal == OP_SELL) ||\n       (posType == OP_SELL && entrySignal == OP_BUY ))\n     {\n      ClosePosition();\n\n      // Hack to prevent MT bug https://forexsb.com/forum/post/73434/#p73434\n      int repeatCount = 80;\n      int delay       = 50;\n      for (int i = 0; i < repeatCount; i++)\n      {\n         UpdatePosition();\n         if (posType == OP_FLAT) break;\n         Sleep(delay);\n      }\n     }\n\n   if(posType == OP_FLAT && entrySignal != OP_FLAT)\n     {\n      OpenPosition(entrySignal);\n      UpdatePosition();\n     }\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid UpdatePosition(void)\n  {\n   posType       = OP_FLAT;\n   posTicket     = 0;\n   posLots       = 0;\n   posProfit     = 0;\n   posStopLoss   = 0;\n   posTakeProfit = 0;\n   posPriceOpen  = 0;\n   posPriceCurr  = 0;\n\n   for(int posIndex = PositionsTotal() - 1; posIndex >= 0; posIndex -= 1)\n     {\n      const ulong ticket = PositionGetTicket(posIndex);\n\n      if(PositionSelectByTicket(ticket) &&\n         PositionGetString(POSITION_SYMBOL) == _Symbol &&\n         PositionGetInteger(POSITION_MAGIC) == Magic_Number)\n        {\n         posType       = (int) PositionGetInteger(POSITION_TYPE);\n         posTicket     = ticket;\n         posLots       = NormalizeDouble(PositionGetDouble(POSITION_VOLUME), 2);\n         posProfit     = NormalizeDouble(PositionGetDouble(POSITION_PROFIT), 2);\n         posStopLoss   = NormalizeDouble(PositionGetDouble(POSITION_SL), _Digits);\n         posTakeProfit = NormalizeDouble(PositionGetDouble(POSITION_TP), _Digits);\n         posPriceOpen  = NormalizeDouble(PositionGetDouble(POSITION_PRICE_OPEN),    _Digits);\n         posPriceCurr  = NormalizeDouble(PositionGetDouble(POSITION_PRICE_CURRENT), _Digits);\n         break;\n        }\n     }\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid InitIndicators(void)\n  {\n   // Accelerator Oscillator\n   indHandlers[0][0][0] = iAC(NULL, 0);\n   if(Show_inds) ChartIndicatorAdd(0, 1, indHandlers[0][0][0]);\n   // Bulls Power (39)\n   indHandlers[0][1][0] = iBullsPower(NULL, 0, Ind1Param0);\n   if(Show_inds) ChartIndicatorAdd(0, 2, indHandlers[0][1][0]);\n   // Bears Power (30), Level: 3.4000\n   indHandlers[0][2][0] = iBearsPower(NULL, 0, Ind2Param0);\n   if(Show_inds) ChartIndicatorAdd(0, 3, indHandlers[0][2][0]);\n   // Candle Color (22, 7)\n   indHandlers[0][3][0] = -1;\n   if(Show_inds) ChartIndicatorAdd(0, 0, indHandlers[0][3][0]);\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid RemoveIndicators(void)\n  {\n   long windowsCount = -1;\n   ChartGetInteger(0, CHART_WINDOWS_TOTAL, 0, windowsCount);\n\n   for(int window = (int) windowsCount - 1; window >= 0; window -= 1)\n     {\n      const int indicatorsCount = ChartIndicatorsTotal(0, window);\n      for(int i = indicatorsCount - 1; i >= 0; i -= 1)\n        {\n         const string name = ChartIndicatorName(0, window, i);\n         ChartIndicatorDelete(0, window, name);\n        }\n     }\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nint GetEntrySignal(void)\n  {\n   // Accelerator Oscillator\n   double ind0buffer[]; CopyBuffer(indHandlers[0][0][0], 0, 1, 3, ind0buffer);\n   double ind0val1  = ind0buffer[2];\n   double ind0val2  = ind0buffer[1];\n   double ind0val3  = ind0buffer[0];\n   bool   ind0long  = ind0val1 < ind0val2 - sigma && ind0val2 > ind0val3 + sigma;\n   bool   ind0short = ind0val1 > ind0val2 + sigma && ind0val2 < ind0val3 - sigma;\n\n   // Bulls Power (39)\n   double ind1buffer[]; CopyBuffer(indHandlers[0][1][0], 0, 1, 3, ind1buffer);\n   double ind1val1  = ind1buffer[2];\n   double ind1val2  = ind1buffer[1];\n   bool   ind1long  = ind1val1 > ind1val2 + sigma;\n   bool   ind1short = ind1val1 < ind1val2 - sigma;\n\n   // Bears Power (30), Level: 3.4000\n   double ind2buffer[]; CopyBuffer(indHandlers[0][2][0], 0, 1, 3, ind2buffer);\n   double ind2val1  = ind2buffer[2];\n   double ind2val2  = ind2buffer[1];\n   bool   ind2long  = ind2val1 < Ind2Param1 - sigma && ind2val2 > Ind2Param1 + sigma;\n   bool   ind2short = ind2val1 > -Ind2Param1 + sigma && ind2val2 < -Ind2Param1 - sigma;\n\n   bool canOpenLong  = ind0long && ind1long && ind2long;\n   bool canOpenShort = ind0short && ind1short && ind2short;\n\n   return canOpenLong  && !canOpenShort ? OP_BUY\n        : canOpenShort && !canOpenLong  ? OP_SELL\n        : OP_FLAT;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid ManageClose(void)\n  {\n   // Candle Color (22, 7)\n   bool ind3long  = false;\n   bool ind3short = false;\n   {\n      int consecutiveBullish = 0;\n      int consecutiveBearish = 0;\n      double pipVal = pip * Ind3Param0;\n\n      for (int b = Ind3Param1 + 2; b > 0; b--)\n        {\n         consecutiveBullish = Close(b) - Open(b) >= pipVal ? consecutiveBullish + 1 : 0;\n         consecutiveBearish = Open(b) - Close(b) >= pipVal ? consecutiveBearish + 1 : 0;\n        }\n\n      ind3long  = consecutiveBearish >= Ind3Param1;\n      ind3short = consecutiveBullish >= Ind3Param1;\n   }\n\n   if( (posType == OP_BUY  && ind3long) ||\n        (posType == OP_SELL && ind3short) )\n      ClosePosition();\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid OpenPosition(const int command)\n  {\n   entryProtectionMessage = \"\";\n   const int spread = (int)((Ask() - Bid()) / _Point);\n   if(Max_OpenPos > sigma && posStatCount >= Max_OpenPos)\n      entryProtectionMessage += StringFormat(\"Protection: Max open positions: %d, current: %d\\n\",\n                                             Max_OpenPos, posStatCount);\n   if(Max_OpenLots > sigma && posStatLots > Max_OpenLots - sigma)\n      entryProtectionMessage += StringFormat(\"Protection: Max open lots: %.2f, current: %.2f\\n\",\n                                             Max_OpenLots, posStatLots);\n   if(Max_Spread > sigma && spread > Max_Spread)\n      entryProtectionMessage += StringFormat(\"Protection: Max spread: %d, current: %d\\n\",\n                                             Max_Spread, spread);\n   if(MaxDailyLoss > sigma && dailyLoss >= MaxDailyLoss)\n      entryProtectionMessage += StringFormat(\"Protection: Max daily loss: %d, current: %.2f\\n\",\n                                             MaxDailyLoss, dailyLoss);\n   if(Max_Daily_DD > sigma && dailyDrawdown >= Max_Daily_DD)\n      entryProtectionMessage += StringFormat(\"Protection: Max daily drawdown: %.2f%%, current: %.2f%%\\n\",\n                                             Max_Daily_DD, dailyDrawdown);\n   if(GlobalVariableGet(accEntrySuspendGlobalVarName) > sigma)\n      entryProtectionMessage += StringFormat(\"New entries are suspended until the Daily reset hour: %d\",\n                                             Daily_Reset);\n\n   const int newsIndex = NewsFilterActive();\n   if(newsIndex > -1)\n     {\n      const NewsRecord newsRecord = newsRecords[newsIndex];\n      const datetime timeShift = (datetime) MathRound((TimeLocal() - TimeGMT()) / 3600.0) * 3600;\n      const string   priority  = newsRecord.priority == \"high\" ? \"[high]\" : \"[med]\";\n      entryProtectionMessage  += StringFormat(\"News filter: %s %s %s %s\\n\",\n                                              priority,\n                                              TimeToString(newsRecord.time + timeShift,\n                                                           TIME_DATE | TIME_MINUTES),\n                                              newsRecord.currency,\n                                              newsRecord.title);\n     }\n\n   if(entryProtectionMessage != \"\")\n     {\n      entryProtectionMessage = TimeToString(TimeCurrent()) + \" \" +\n                               \"An entry order was canceled:\\n\" +\n                               entryProtectionMessage;\n      return;\n     }\n\n   const double stopLoss   = GetStopLossPrice(command);\n   const double takeProfit = GetTakeProfitPrice(command);\n   ManageOrderSend(command, Entry_Amount, stopLoss, takeProfit, 0);\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid ClosePosition(void)\n  {\n   const int command = posType == OP_BUY ? OP_SELL : OP_BUY;\n   ManageOrderSend(command, posLots, 0, 0, posTicket);\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid ManageOrderSend(int command, double lots, double stopLoss, double takeProfit, ulong ticket)\n  {\n   for(int attempt = 0; attempt < TRADE_RETRY_COUNT; attempt++)\n     {\n      if(IsTradeContextFree())\n        {\n         MqlTradeRequest request;\n         MqlTradeResult  result;\n         ZeroMemory(request);\n         ZeroMemory(result);\n\n         request.action       = TRADE_ACTION_DEAL;\n         request.symbol       = _Symbol;\n         request.volume       = lots;\n         request.type         = command == OP_BUY ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;\n         request.price        = command == OP_BUY ? Ask() : Bid();\n         request.type_filling = orderFillingType;\n         request.deviation    = 10;\n         request.sl           = stopLoss;\n         request.tp           = takeProfit;\n         request.magic        = Magic_Number;\n         request.position     = ticket;\n         request.comment      = IntegerToString(Magic_Number);\n\n         bool isOrderCheck = CheckOrder(request);\n         bool isOrderSend  = false;\n\n         if(isOrderCheck)\n           {\n            ResetLastError();\n            isOrderSend = OrderSend(request, result);\n           }\n\n         if(isOrderCheck && isOrderSend && result.retcode == TRADE_RETCODE_DONE)\n            return;\n        }\n\n      Sleep(TRADE_RETRY_WAIT);\n      Print(\"Order Send retry: \" + IntegerToString(attempt + 2));\n     }\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid ModifyPosition(double stopLoss, double takeProfit, ulong ticket)\n  {\n   for(int attempt = 0; attempt < TRADE_RETRY_COUNT; attempt++)\n     {\n      if(IsTradeContextFree())\n        {\n         MqlTradeRequest request;\n         MqlTradeResult  result;\n         ZeroMemory(request);\n         ZeroMemory(result);\n\n         request.action   = TRADE_ACTION_SLTP;\n         request.symbol   = _Symbol;\n         request.sl       = stopLoss;\n         request.tp       = takeProfit;\n         request.magic    = Magic_Number;\n         request.position = ticket;\n         request.comment  = IntegerToString(Magic_Number);\n\n         bool isOrderCheck = CheckOrder(request);\n         bool isOrderSend  = false;\n\n         if(isOrderCheck)\n           {\n            ResetLastError();\n            isOrderSend = OrderSend(request, result);\n           }\n\n         if(isOrderCheck && isOrderSend && result.retcode == TRADE_RETCODE_DONE)\n            return;\n        }\n\n      Sleep(TRADE_RETRY_WAIT);\n      Print(\"Order Send retry: \" + IntegerToString(attempt + 2));\n     }\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nbool CheckOrder(MqlTradeRequest &request)\n  {\n   MqlTradeCheckResult check;\n   ZeroMemory(check);\n   ResetLastError();\n\n   if(OrderCheck(request, check))\n      return true;\n\n   Print(\"Error with OrderCheck: \" + check.comment);\n\n   if(check.retcode == TRADE_RETCODE_INVALID_FILL)\n     {\n      switch (orderFillingType)\n        {\n         case ORDER_FILLING_FOK:\n            Print(\"Filling mode changed to: ORDER_FILLING_IOC\");\n            orderFillingType = ORDER_FILLING_IOC;\n            break;\n         case ORDER_FILLING_IOC:\n            Print(\"Filling mode changed to: ORDER_FILLING_RETURN\");\n            orderFillingType = ORDER_FILLING_RETURN;\n            break;\n         case ORDER_FILLING_RETURN:\n            Print(\"Filling mode changed to: ORDER_FILLING_FOK\");\n            orderFillingType = ORDER_FILLING_FOK;\n            break;\n        }\n\n      request.type_filling = orderFillingType;\n\n      return CheckOrder(request);\n     }\n\n   return false;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\ndouble GetStopLossPrice(const int command)\n  {\n   if(Stop_Loss == 0)\n      return 0;\n\n   const double delta    = MathMax(pip * Stop_Loss, _Point * stopLevel);\n   const double stopLoss = command == OP_BUY ? Bid() - delta : Ask() + delta;\n\n   return NormalizeDouble(stopLoss, _Digits);\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\ndouble GetTakeProfitPrice(const int command)\n  {\n   if(Take_Profit == 0) return 0;\n\n   const double delta      = MathMax(pip * Take_Profit, _Point * stopLevel);\n   const double takeProfit = command == OP_BUY ? Bid() + delta : Ask() - delta;\n\n   return NormalizeDouble(takeProfit, _Digits);\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\ndouble GetTrailingStopPrice(void)\n  {\n   const double bid = Bid();\n   const double ask = Ask();\n   const double spread = ask - bid;\n   const double stopLevelPoints = _Point * stopLevel;\n   const double stopLossPoints  = pip * Stop_Loss;\n\n   if(posType == OP_BUY)\n     {\n      const double newStopLoss = High(1) - stopLossPoints;\n      if(posStopLoss <= newStopLoss - pip)\n         return newStopLoss < bid\n                  ? newStopLoss >= bid - stopLevelPoints\n                     ? bid - stopLevelPoints\n                     : newStopLoss\n                  : bid;\n     }\n\n   if(posType == OP_SELL)\n     {\n      const double newStopLoss = Low(1) + spread + stopLossPoints;\n      if(posStopLoss >= newStopLoss + pip)\n         return newStopLoss > ask\n                  ? newStopLoss <= ask + stopLevelPoints\n                     ? ask + stopLevelPoints\n                     : newStopLoss\n                  : ask;\n     }\n\n   return posStopLoss;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid ManageTrailingStop(const double trailingStop)\n  {\n   if((posType == OP_BUY  && MathAbs(trailingStop - Bid()) < _Point) ||\n      (posType == OP_SELL && MathAbs(trailingStop - Ask()) < _Point))\n     {\n      ClosePosition();\n      return;\n     }\n\n   if(MathAbs(trailingStop - posStopLoss) > _Point)\n     {\n      posStopLoss = NormalizeDouble(trailingStop, _Digits);\n      ModifyPosition(posStopLoss, posTakeProfit, posTicket);\n     }\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\ndouble Bid(void)\n  {\n   return SymbolInfoDouble(_Symbol, SYMBOL_BID);\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\ndouble Ask(void)\n  {\n   return SymbolInfoDouble(_Symbol, SYMBOL_ASK);\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\ndatetime Time(const int bar)\n  {\n   datetime buffer[];\n   ArrayResize(buffer, 1);\n   return CopyTime(_Symbol, _Period, bar, 1, buffer) == 1 ? buffer[0] : 0;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\ndouble Open(const int bar)\n  {\n   double buffer[];\n   ArrayResize(buffer, 1);\n   return CopyOpen(_Symbol, _Period, bar, 1, buffer) == 1 ? buffer[0] : 0;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\ndouble High(const int bar)\n  {\n   double buffer[];\n   ArrayResize(buffer, 1);\n   return CopyHigh(_Symbol, _Period, bar, 1, buffer) == 1 ? buffer[0] : 0;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\ndouble Low(const int bar)\n  {\n   double buffer[];\n   ArrayResize(buffer, 1);\n   return CopyLow(_Symbol, _Period, bar, 1, buffer) == 1 ? buffer[0] : 0;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\ndouble Close(const int bar)\n  {\n   double buffer[];\n   ArrayResize(buffer, 1);\n   return CopyClose(_Symbol, _Period, bar, 1, buffer) == 1 ? buffer[0] : 0;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\ndouble GetPipValue(void)\n  {\n   return _Digits == 4 || _Digits == 5 ? 0.0001\n        : _Digits == 2 || _Digits == 3 ? 0.01\n                        : _Digits == 1 ? 0.1 : 1;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nbool IsTradeAllowed(void)\n  {\n   return (bool) MQLInfoInteger(MQL_TRADE_ALLOWED);\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid RefreshRates(void)\n  {\n   // Dummy function to make it compatible with MQL4\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nint DayOfWeek(void)\n  {\n   MqlDateTime mqlTime;\n   TimeToStruct(Time(0), mqlTime);\n   return mqlTime.day_of_week;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nbool IsTradeContextFree(void)\n  {\n   if(IsTradeAllowed())\n      return true;\n\n   const uint startWait = GetTickCount();\n   Print(\"Trade context is busy! Waiting...\");\n\n   while(true)\n     {\n      if(IsStopped())\n         return false;\n\n      const uint diff = GetTickCount() - startWait;\n      if(diff > 30 * 1000)\n        {\n         Print(\"The waiting limit exceeded!\");\n         return false;\n        }\n\n      if(IsTradeAllowed())\n        {\n         RefreshRates();\n         return true;\n        }\n\n      Sleep(TRADE_RETRY_WAIT);\n     }\n\n   return true;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nbool IsOutOfSession(void)\n  {\n   const int dayOfWeek    = DayOfWeek();\n   const int periodStart  = int(Time(0) % 86400);\n   const int periodLength = PeriodSeconds(_Period);\n   const int periodFix    = periodStart + (sessionCloseAtSessionClose ? periodLength : 0);\n   const int friBarFix    = periodStart + (sessionCloseAtFridayClose ||\n                                           sessionCloseAtSessionClose ? periodLength : 0);\n\n   return dayOfWeek == 0 && sessionIgnoreSunday ? true\n        : dayOfWeek == 0 ? periodStart < sessionSundayOpen ||\n                           periodFix   > sessionSundayClose\n        : dayOfWeek  < 5 ? periodStart < sessionMondayThursdayOpen ||\n                           periodFix   > sessionMondayThursdayClose\n                         : periodStart < sessionFridayOpen ||\n                           friBarFix   > sessionFridayClose;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nbool IsForceSessionClose(void)\n  {\n   if(!sessionCloseAtFridayClose && !sessionCloseAtSessionClose)\n      return false;\n\n   const int dayOfWeek = DayOfWeek();\n   const int periodEnd = int(Time(0) % 86400) + PeriodSeconds(_Period);\n\n   return dayOfWeek == 0 && sessionCloseAtSessionClose ? periodEnd > sessionSundayClose\n        : dayOfWeek  < 5 && sessionCloseAtSessionClose ? periodEnd > sessionMondayThursdayClose\n        : dayOfWeek == 5 ? periodEnd > sessionFridayClose : false;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid UpdateAccountProtection(void)\n  {\n   const double equity = AccountInfoDouble(ACCOUNT_EQUITY);\n\n   double maxEquity = GlobalVariableGet(accMaxEquityGlobalVarName);\n   if(equity > maxEquity)\n     {\n      maxEquity = equity;\n      GlobalVariableSet(accMaxEquityGlobalVarName, maxEquity);\n     }\n\n   equityDrawdownPercent = 100 * (maxEquity - equity) / maxEquity;\n\n   if(equity > GlobalVariableGet(accMaxDailyEquityGlobalVarName))\n      GlobalVariableSet(accMaxDailyEquityGlobalVarName, equity);\n\n   const double balance = AccountInfoDouble(ACCOUNT_BALANCE);\n   if(balance > GlobalVariableGet(accMaxDailyBalanceGlobalVarName))\n      GlobalVariableSet(accMaxDailyBalanceGlobalVarName, balance);\n\n   double maxDailyBalance = GlobalVariableGet(accMaxDailyBalanceGlobalVarName);\n   double maxDailyEquity  = GlobalVariableGet(accMaxDailyEquityGlobalVarName);\n\n   const datetime currentTime = TimeCurrent();\n   MqlDateTime dateTime;\n   TimeToStruct(currentTime, dateTime);\n   if(dateTime.hour == Daily_Reset && currentTime - dailyDrawdownLastReset > 60 * 60)\n     {\n      dailyDrawdownLastReset = currentTime;\n      GlobalVariableSet(accMaxDailyEquityGlobalVarName,  equity);\n      GlobalVariableSet(accMaxDailyBalanceGlobalVarName, balance);\n      GlobalVariableSet(accEntrySuspendGlobalVarName,    0);\n      maxDailyBalance = balance;\n      maxDailyEquity  = equity;\n      entryProtectionMessage = \"\";\n     }\n\n   dailyLoss     = equity >= maxDailyBalance ? 0 : maxDailyBalance - equity;\n   dailyDrawdown = 100 * (maxDailyEquity - equity) / maxDailyEquity;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid CheckAccountProtection(void)\n  {\n   const double accountEquity = AccountInfoDouble(ACCOUNT_EQUITY);\n\n   if(Min_Equity > sigma && accountEquity <= Min_Equity)\n     {\n      ActivateProtection(StringFormat(\"Minimum equity protection activated. Equity: %.2f\", accountEquity));\n      return;\n     }\n\n   if(Max_Equity > sigma && accountEquity >= Max_Equity)\n     {\n      ActivateProtection(StringFormat(\"Maximum equity protection activated. Equity: %.2f\", accountEquity));\n      return;\n     }\n\n   if(MaxEquity_DD > sigma && equityDrawdownPercent >= MaxEquity_DD)\n     {\n      ActivateProtection(StringFormat(\"Max Equity DD protection activated! Equity DD: %.2f%%\", equityDrawdownPercent));\n      return;\n     }\n\n   if(MaxDailyLoss > sigma && dailyLoss >= MaxDailyLoss)\n     {\n      entryProtectionMessage = StringFormat(\"Max daily loss protection activated! Daily loss: %.2f\\n\", dailyLoss);\n      GlobalVariableSet(accEntrySuspendGlobalVarName, 1);\n      if(posType == OP_BUY || posType == OP_SELL)\n         ClosePosition();\n      return;\n     }\n\n   if(Max_Daily_DD > sigma && dailyDrawdown >= Max_Daily_DD)\n     {\n      entryProtectionMessage = StringFormat(\"Max daily drawdown protection activated! Daily DD: %.2f%%\\n\", dailyDrawdown);\n      GlobalVariableSet(accEntrySuspendGlobalVarName, 1);\n      if(posType == OP_BUY || posType == OP_SELL)\n         ClosePosition();\n      return;\n     }\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid ActivateProtection(const string message)\n  {\n   if(posType == OP_BUY || posType == OP_SELL)\n      ClosePosition();\n\n   DeleteObjects();\n\n   accountProtectionMessage  = StringFormat(\"\\n%s\\nMagic number: %d\\n\", robotTagline, Magic_Number);\n   accountProtectionMessage += message + \"\\n\";\n   accountProtectionMessage += \"The current position was closed.\" + \"\\n\";\n   accountProtectionMessage += \"The Expert Advisor was turned off.\";\n   Comment(accountProtectionMessage);\n   Print(accountProtectionMessage);\n\n   Sleep(20 * 1000);\n   ExpertRemove();\n   OnDeinit(0);\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid SetPosStats(void)\n  {\n   posStatCount = 0;\n   posStatLots  = 0;\n\n   for(int i = PositionsTotal() - 1; i >= 0; i--)\n     {\n      const ulong ticket = PositionGetTicket(i);\n      if(ticket == 0 || !PositionSelectByTicket(ticket))\n         continue;\n\n      posStatCount += 1;\n      posStatLots  += PositionGetDouble(POSITION_VOLUME);\n     }\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid UpdateStats(void)\n  {\n   string statsInfo = StringFormat(\"\\n%s\\nMagic number: %d\\n\", robotTagline, Magic_Number);\n\n   if(entryProtectionMessage != \"\")\n      statsInfo += \"\\n\" + entryProtectionMessage;\n   if(Pos_Stat)\n      statsInfo += GetPositionStats() + \"\\n\";\n   if(Robot_Stats)\n      statsInfo += GetRobotStats() + \"\\n\";\n   if(Max_Spread   > sigma || Max_OpenPos > sigma || Max_OpenLots > sigma || MaxDailyLoss > sigma ||\n      Max_Daily_DD > sigma || Min_Equity  > sigma || Max_Equity   > sigma || MaxEquity_DD > sigma)\n      statsInfo += GetProtectionInfo();\n   if(News_Priority != NewsFilter_Disabled)\n      statsInfo += GetNewsText() + \"\\n\";\n\n   RenderStats(statsInfo);\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nstring GetProtectionInfo(void)\n  {\n   string protectionInfo = \"\\n            ..:: Active Protections ::..\\n\";\n\n   if(Max_Spread > sigma)\n      protectionInfo += StringFormat(\"Max spread: %d, current: %d\\n\",\n                                     Max_Spread, (int)MathRound((Ask() - Bid()) / _Point));\n   if(Max_OpenPos > sigma)\n      protectionInfo += StringFormat(\"Max open positions: %d, current: %d\\n\",\n                                     Max_OpenPos, posStatCount);\n   if(Max_OpenLots > sigma)\n      protectionInfo += StringFormat(\"Max open lots: %.2f, current: %.2f\\n\",\n                                     Max_OpenLots, posStatLots);\n   if(MaxDailyLoss > sigma)\n      protectionInfo += StringFormat(\"Max daily loss: %d, current: %.2f\\n\",\n                                     MaxDailyLoss, dailyLoss);\n   if(Max_Daily_DD > sigma)\n      protectionInfo += StringFormat(\"Max daily drawdown: %.2f%%, current: %.2f%%\\n\",\n                                     Max_Daily_DD, dailyDrawdown);\n   if(Min_Equity > sigma)\n      protectionInfo += StringFormat(\"Min equity: %d, current: %.2f\\n\",\n                                     Min_Equity, AccountInfoDouble(ACCOUNT_EQUITY));\n   if(MaxEquity_DD > sigma)\n      protectionInfo += StringFormat(\"Max equity drawdown: %.2f%%, current: %.2f%%\\n\",\n                                     MaxEquity_DD, equityDrawdownPercent);\n   if(Max_Equity > sigma)\n      protectionInfo += StringFormat(\"Max equity: %d, current: %.2f\\n\",\n                                     Max_Equity, AccountInfoDouble(ACCOUNT_EQUITY));\n\n   return protectionInfo;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nstring GetPositionStats(void)\n  {\n   const string positionStats = \"\\n            ..:: Position Stats ::..\\n\";\n\n   if(posType == OP_FLAT)\n      return positionStats +  \"Position: no open position\";\n\n   return positionStats +\n          StringFormat(\"Position: %s, Lots: %.2f, Profit %.2f\\n\",\n                       (posType == OP_BUY) ? \"Long\" : \"Short\",\n                       posLots, posProfit) +\n          StringFormat(\"Open price: %s, Current price: %s\\n\",\n                       DoubleToString(posPriceOpen, _Digits),\n                       DoubleToString(posPriceCurr, _Digits)) +\n          StringFormat(\"Stop Loss: %s, Take Profit: %s\",\n                       DoubleToString(posStopLoss,   _Digits),\n                       DoubleToString(posTakeProfit, _Digits));\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nstring GetRobotStats(void)\n  {\n   return \"\\n            ..:: Trading Stats ::..\\n\" +\n          \"  1-day: \" + GetRobotStatsDays(1) + \"\\n\" +\n          \"  7-day: \" + GetRobotStatsDays(7) + \"\\n\" +\n          \"30-day: \"  + GetRobotStatsDays(30);\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nstring GetRobotStatsDays(const int days)\n  {\n   double grossProfit     = 0;\n   double grossLoss       = 0;\n   int    histDealsCnt    = 0;\n   double histDealsProfit = 0;\n\n   const datetime timeCurrent = TimeCurrent();\n   const datetime timeStart   = timeCurrent - days * PeriodSeconds(PERIOD_D1);\n   HistorySelect(timeStart, timeCurrent);\n   const int deals = HistoryDealsTotal();\n\n   for(int i = 0; i < deals; i += 1)\n     {\n      const ulong ticket = HistoryDealGetTicket(i);\n      if(ticket == 0)\n         continue;\n\n      // When we close a position manually it gets dealMagic = 0\n      const long dealMagic = HistoryDealGetInteger(ticket, DEAL_MAGIC);\n      if(dealMagic > 0 && dealMagic != Magic_Number)\n         continue;\n\n      if(HistoryDealGetString(ticket, DEAL_SYMBOL) != _Symbol)\n         continue;\n\n      const long dealType = HistoryDealGetInteger(ticket, DEAL_TYPE);\n      if(dealType != DEAL_TYPE_BUY && dealType != DEAL_TYPE_SELL)\n         continue;\n\n      const long dealEntry = HistoryDealGetInteger(ticket, DEAL_ENTRY);\n      if(dealEntry != DEAL_ENTRY_OUT)\n         continue;\n\n      const double profit = HistoryDealGetDouble(ticket, DEAL_PROFIT) +\n                            HistoryDealGetDouble(ticket, DEAL_SWAP)   +\n                            HistoryDealGetDouble(ticket, DEAL_COMMISSION);\n\n      histDealsProfit += profit;\n      histDealsCnt    += 1;\n\n      if(profit > sigma)\n         grossProfit += profit;\n      if(profit < -sigma)\n         grossLoss -= profit;\n     }\n\n   const double profitFactor = grossLoss > sigma ? grossProfit / grossLoss : grossProfit;\n\n   return StringFormat(\"Trades: %d, Profit: %.2f, Profit factor: %.2f\",\n                       histDealsCnt, histDealsProfit, profitFactor);\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nstring GetNewsInfo(void)\n  {\n   return \"\";\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid RenderStats(const string text)\n  {\n   string lines[];\n   const int linesCount = StringSplit(text, '\\n', lines);\n\n   uint lineWidth, lineHeight;\n   TextGetSize(robotTagline, lineWidth, lineHeight);\n\n   if(maxRectangles == 0)\n      RectLabelCreate(0, \"Stats_background\", 0, 0, 30, lineWidth,\n                      linesCount * lineHeight, GetChartBackColor(0));\n\n   const color foreColor = GetChartForeColor(0);\n   for(int i = 0; i < linesCount; i += 1)\n     {\n      if(lines[i] == \"\")\n         lines[i] = \" \";\n      string labelName = \"label\" + IntegerToString(i);\n      if(i < maxLabels)\n         LabelUpdate(0, labelName, lines[i]);\n      else\n         LabelCreate(0, labelName, 0, 10, 20 + i * lineHeight,\n                     CORNER_LEFT_UPPER, lines[i], \"Arial\", 10, foreColor);\n\n      uint lnWidth, lnHeight;\n      TextGetSize(lines[i], lnWidth, lnHeight);\n      if(lnWidth > lineWidth)\n         lineWidth = lnWidth;\n     }\n   ObjectSetInteger(0, \"Stats_background\", OBJPROP_XSIZE,\n                    (int) MathRound(lineWidth * 0.90));\n   ObjectSetInteger(0, \"Stats_background\", OBJPROP_YSIZE,\n                    linesCount * lineHeight);\n   for(int i = linesCount; i < maxLabels; i += 1)\n      LabelUpdate(0, \"label\" + IntegerToString(i), \" \");\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid RectLabelCreate(\n   const long             chartId    = 0,                 // chart's ID\n   const string           name       = \"RectLabel\",       // label name\n   const int              sub_window = 0,                 // sub-window index\n   const int              x          = 0,                 // X coordinate\n   const int              y          = 0,                 // Y coordinate\n   const int              width      = 50,                // width\n   const int              height     = 18,                // height\n   const color            back_clr   = clrBlack,          // background color\n   const ENUM_BORDER_TYPE border     = BORDER_SUNKEN,     // border type\n   const ENUM_BASE_CORNER corner     = CORNER_LEFT_UPPER, // chart corner for anchoring\n   const color            clr        = clrBlack,          // flat border color (Flat)\n   const ENUM_LINE_STYLE  style      = STYLE_SOLID,       // flat border style\n   const int              line_width = 0,                 // flat border width\n   const bool             back       = false,             // in the background\n   const bool             selection  = false,             // highlight to move\n   const bool             hidden     = true,              // hidden in the object list\n   const long             z_order    = 0)                 // priority for mouse click\n  {\n   if(!ObjectCreate(chartId, name, OBJ_RECTANGLE_LABEL, sub_window, 0, 0)) return;\n   maxRectangles += 1;\n   ObjectSetInteger(chartId, name, OBJPROP_XDISTANCE,   x);\n   ObjectSetInteger(chartId, name, OBJPROP_YDISTANCE,   y);\n   ObjectSetInteger(chartId, name, OBJPROP_XSIZE,       width);\n   ObjectSetInteger(chartId, name, OBJPROP_YSIZE,       height);\n   ObjectSetInteger(chartId, name, OBJPROP_BGCOLOR,     back_clr);\n   ObjectSetInteger(chartId, name, OBJPROP_BORDER_TYPE, border);\n   ObjectSetInteger(chartId, name, OBJPROP_CORNER,      corner);\n   ObjectSetInteger(chartId, name, OBJPROP_COLOR,       clr);\n   ObjectSetInteger(chartId, name, OBJPROP_STYLE,       style);\n   ObjectSetInteger(chartId, name, OBJPROP_WIDTH,       line_width);\n   ObjectSetInteger(chartId, name, OBJPROP_BACK,        back);\n   ObjectSetInteger(chartId, name, OBJPROP_SELECTABLE,  selection);\n   ObjectSetInteger(chartId, name, OBJPROP_SELECTED,    selection);\n   ObjectSetInteger(chartId, name, OBJPROP_HIDDEN,      hidden);\n   ObjectSetInteger(chartId, name, OBJPROP_ZORDER,      z_order);\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid LabelCreate(\n   const long              chartId=0,                // chart's ID\n   const string            name=\"Label\",             // label name\n   const int               sub_window=0,             // sub-window index\n   const int               x=0,                      // X coordinate\n   const int               y=0,                      // Y coordinate\n   const ENUM_BASE_CORNER  corner=CORNER_LEFT_UPPER, // chart corner for anchoring\n   const string            text=\"Label\",             // text\n   const string            font=\"Arial\",             // font\n   const int               font_size=10,             // font size\n   const color             clr=clrYellow,            // color\n   const double            angle=0.0,                // text slope\n   const ENUM_ANCHOR_POINT anchor=ANCHOR_LEFT_UPPER, // anchor type\n   const bool              back=false,               // in the background\n   const bool              selection=false,          // highlight to move\n   const bool              hidden=true,              // hidden in the object list\n   const long              z_order=0)                // priority for mouse click\n  {\n   if(!ObjectCreate(chartId, name, OBJ_LABEL, sub_window, 0 , 0)) return;\n   maxLabels += 1;\n   ObjectSetInteger(chartId, name, OBJPROP_XDISTANCE,  x);\n   ObjectSetInteger(chartId, name, OBJPROP_YDISTANCE,  y);\n   ObjectSetInteger(chartId, name, OBJPROP_CORNER,     corner);\n   ObjectSetString( chartId, name, OBJPROP_TEXT,       text);\n   ObjectSetString( chartId, name, OBJPROP_FONT,       font);\n   ObjectSetString( chartId, name, OBJPROP_TOOLTIP,    \"\\n\");\n   ObjectSetInteger(chartId, name, OBJPROP_FONTSIZE,   font_size);\n   ObjectSetDouble( chartId, name, OBJPROP_ANGLE,      angle);\n   ObjectSetInteger(chartId, name, OBJPROP_ANCHOR,     anchor);\n   ObjectSetInteger(chartId, name, OBJPROP_COLOR,      clr);\n   ObjectSetInteger(chartId, name, OBJPROP_BACK,       back);\n   ObjectSetInteger(chartId, name, OBJPROP_SELECTABLE, selection);\n   ObjectSetInteger(chartId, name, OBJPROP_SELECTED,   selection);\n   ObjectSetInteger(chartId, name, OBJPROP_HIDDEN,     hidden);\n   ObjectSetInteger(chartId, name, OBJPROP_ZORDER,     z_order);\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid LabelUpdate(int chartId, string name, string text)\n  {\n   ObjectSetString(chartId, name, OBJPROP_TEXT, text);\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\ncolor GetChartForeColor(const long chartId=0)\n  {\n   long foreColor = clrWhite;\n   ChartGetInteger(chartId, CHART_COLOR_FOREGROUND, 0, foreColor);\n   return (color) foreColor;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\ncolor GetChartBackColor(const long chartId=0)\n  {\n   long backColor = clrBlack;\n   ChartGetInteger(chartId, CHART_COLOR_BACKGROUND, 0, backColor);\n   return (color) backColor;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid DeleteObjects(void)\n  {\n   if(ObjectFind(0, \"Stats_background\") == 0)\n      ObjectDelete(0, \"Stats_background\");\n   maxLabels = MathMax(maxLabels, 100);\n   for(int i = 0; i < maxLabels; i++)\n     {\n      const string objName = \"label\" + IntegerToString(i);\n      if(ObjectFind(0, objName) == 0)\n         ObjectDelete(0, objName);\n     }\n   maxRectangles = 0;\n   maxLabels     = 0;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid InitGlobalVariables(void)\n  {\n   if(MQLInfoInteger(MQL_TESTER)) return;\n\n   const string accountNumberText = (string)AccountInfoInteger(ACCOUNT_LOGIN);\n\n   accMaxEquityGlobalVarName       = \"Max_Equity_\"         + accountNumberText;\n   accMaxDailyBalanceGlobalVarName = \"Max_Daily_Balance_\"  + accountNumberText;\n   accMaxDailyEquityGlobalVarName  = \"Max_Daily_Equity_\"   + accountNumberText;\n   accEntrySuspendGlobalVarName    = \"Is_Entry_Suspended_\" + accountNumberText;\n\n   if(!GlobalVariableCheck(accMaxEquityGlobalVarName))\n      GlobalVariableSet(accMaxEquityGlobalVarName, AccountInfoDouble(ACCOUNT_EQUITY));\n   if(!GlobalVariableCheck(accMaxDailyBalanceGlobalVarName))\n      GlobalVariableSet(accMaxDailyBalanceGlobalVarName, AccountInfoDouble(ACCOUNT_BALANCE));\n   if(!GlobalVariableCheck(accMaxDailyEquityGlobalVarName))\n      GlobalVariableSet(accMaxDailyEquityGlobalVarName, AccountInfoDouble(ACCOUNT_EQUITY));\n   if(!GlobalVariableCheck(accEntrySuspendGlobalVarName))\n      GlobalVariableSet(accEntrySuspendGlobalVarName, 0);\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid LoadNews(void)\n  {\n   loadNewsError = \"\";\n   string error = \"\";\n   const string newsContent = GetNewsContent(error);\n   if(error != \"\")\n     {\n      loadNewsError = error;\n      return;\n     }\n\n   if(newsContent == \"\")\n     {\n      loadNewsError = StringFormat(\"Cannot load news. Last error code: %d\", GetLastError());\n      return;\n     }\n\n   ParseNewsContent(newsContent, error);\n\n   if(error != \"\")\n      loadNewsError = error;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid ParseNewsContent(const string newsContent, string &error)\n  {\n   string lines[];\n   const int linesLen = StringSplit(newsContent, '\\n', lines);\n\n   if(linesLen == -1)\n     {\n      error = \"Cannot parse the news feed\";\n      return;\n     }\n\n   ArrayResize(newsRecords, linesLen);\n\n   for(int i = 0; i < linesLen; i += 1)\n     {\n      string fields[];\n      const int fieldsLen = StringSplit(lines[i], ';', fields);\n\n      if(fieldsLen != 4)\n        {\n         error = \"Cannot parse the news feed records\";\n         return;\n        }\n\n      NewsRecord record;\n      record.time     = (datetime) StringToInteger(fields[0]);\n      record.priority = fields[1];\n      record.currency = fields[2];\n      record.title    = fields[3];\n\n      newsRecords[i] = record;\n     }\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nstring GetNewsContent(string &error)\n  {\n   const string url = \"https://forexsb.com/updates/news-feed.txt\";\n\n   char   reqBody[], resData[];\n   string headers;\n\n   ResetLastError();\n\n   const int resCode  = WebRequest(\"GET\", url, \"\", 10000, reqBody, resData, headers);\n   const int resError = GetLastError();\n\n   isNewsFeedOk = false;\n   if(resError == ERR_FUNCTION_NOT_ALLOWED)\n     {\n      error = \"News Filter cannot access the news server.\\n\" +\n              \"Follow these steps to fix it:\\n\"\n              \" - open the \\\"Tool\\\" -> \\\"Options\\\" panel\\n\" +\n              \" - go to the \\\"Expert Advisors\\\" tab\\n\" +\n              \" - enable the \\\"Allow WebRequest for the listed URL:\\\" option.\\n\" +\n              \" - add \\\"https://forexsb.com\\\" in a field below.\";\n      return \"\";\n     }\n\n   if(resError != ERR_SUCCESS)\n     {\n      error = StringFormat(\"News Filter connection error! Error code: %d\", resError);\n      return \"\";\n     }\n\n   if(resCode != 200)\n     {\n      error = StringFormat(\"Response code: %d\", resCode);\n      return \"\";\n     }\n\n   isNewsFeedOk = true;\n   return CharArrayToString(resData, 0, ArraySize(resData), CP_UTF8);\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nstring GetNewsText(void)\n  {\n   string newsText = \"\\n            ..:: Upcoming News ::..\\n\";\n   if(loadNewsError != \"\") return newsText + loadNewsError;\n\n   const datetime timeNow   = TimeGMT();\n   const datetime timeShift = (datetime) MathRound((TimeLocal() - timeNow) / 3600.0) * 3600;\n   const int      newsCount = ArraySize(newsRecords);\n\n   for(int i = 0, count = 0; i < newsCount && count < News_ViewCount; i += 1)\n     {\n      const NewsRecord newsRecord = newsRecords[i];\n\n      if(newsRecord.time < timeNow - News_AfterHigh * 60 ||\n         !NewsIsAcceptedCurrency(newsRecord) ||\n         !NewsIsAcceptedPriority(newsRecord))\n         continue;\n\n      const string newLine  = count > 0 ? \"\\n\" : \"\";\n      const string newsTime = TimeToString(newsRecord.time + timeShift, TIME_DATE | TIME_MINUTES);\n      const string priority = newsRecord.priority == \"high\" ? \"[high]\" : \"[med]\";\n      const string text     = StringFormat(\"%s%s %s %s %s\", newLine, priority, newsTime,\n                                           newsRecord.currency, newsRecord.title);\n      StringAdd(newsText, text);\n      count += 1;\n     }\n\n   return newsText;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nbool NewsIsAcceptedCurrency(const NewsRecord &newsRecord)\n  {\n   for(int i = 0; i < ArraySize(newsCurrencies); i += 1)\n      if(newsCurrencies[i] == newsRecord.currency)\n         return true;\n\n   return false;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nbool NewsIsAcceptedPriority(const NewsRecord &newsRecord)\n  {\n   return (News_Priority == NewsFilter_HighAndMedium) ||\n          (News_Priority == NewsFilter_HighOnly && newsRecord.priority == \"high\");\n  }\n//+------------------------------------------------------------------+\n//| Gets the index of an active news or -1                           |\n//+------------------------------------------------------------------+\nint NewsFilterActive(void)\n  {\n   if(News_Priority == NewsFilter_Disabled)\n      return -1;\n\n   const datetime timeUtc = TimeGMT();\n   const int      newsLen = ArraySize(newsRecords);\n   for(int i = 0; i < newsLen; i++)\n     {\n      const NewsRecord news = newsRecords[i];\n      if(!NewsIsAcceptedCurrency(news) || !NewsIsAcceptedPriority(news))\n         continue;\n\n      if(news.priority == \"high\" &&\n         news.time - News_BeforeHigh * 60 - 15 <= timeUtc &&\n         news.time + News_AfterHigh  * 60 - 15 >= timeUtc)\n         return i;\n\n      if(news.priority == \"medium\" &&\n         news.time - News_BeforeMedium * 60 - 15 <= timeUtc &&\n         news.time + News_AfterMedium  * 60 - 15 >= timeUtc)\n         return i;\n     }\n\n   return -1;\n  }\n//+------------------------------------------------------------------+\n//|                                                                  |\n//+------------------------------------------------------------------+\nvoid ParseNewsCurrenciesText(void)\n  {\n   string parts[], parsed[];\n   const int partsLen = StringSplit(News_Currencies, ',', parts);\n   ArrayResize(parsed, partsLen);\n   int len = 0;\n   for(int i = 0; i < partsLen; i++)\n     {\n      string part = parts[i];\n      StringReplace(part, \" \", \"\");\n      if(StringLen(part) > 0)\n        {\n         parsed[i] = part;\n         len += 1;\n        }\n     }\n\n   ArrayResize(newsCurrencies, len);\n   for(int i = 0; i < len; i++)\n      newsCurrencies[i] = parsed[i];\n  }\n//+------------------------------------------------------------------+\n/*STRATEGY MARKET XMGlobal-MT5 5; GOLD; M15 */\n/*STRATEGY CODE {\"properties\":{\"entryLots\":0.01,\"tradeDirectionMode\":0,\"oppositeEntrySignal\":1,\"stopLoss\":1053,\"takeProfit\":1116,\"useStopLoss\":true,\"useTakeProfit\":false,\"isTrailingStop\":false},\"openFilters\":[{\"name\":\"Accelerator Oscillator\",\"listIndexes\":[7,0,0,0,0],\"numValues\":[0,0,0,0,0,0]},{\"name\":\"Bulls Power\",\"listIndexes\":[0,0,0,0,0],\"numValues\":[39,0,0,0,0,0]},{\"name\":\"Bears Power\",\"listIndexes\":[5,0,0,0,0],\"numValues\":[30,3.4,0,0,0,0]}],\"closeFilters\":[{\"name\":\"Candle Color\",\"listIndexes\":[1,0,0,0,0],\"numValues\":[22,7,0,0,0,0]}]} */\n",
+  "profile": {
+    "description": "Expert Advisor imported from MQL code",
+    "execution_status": "stopped",
+    "indicators": [
+      "Accelerator"
+    ],
+    "magic_numbers": [],
+    "name": "Parsed EA",
+    "parameters": [
+      {
+        "default_value": "------",
+        "description": "string parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "_Properties_",
+        "step": null,
+        "type": "string"
+      },
+      {
+        "default_value": 1224727994,
+        "description": "int parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Magic_Number",
+        "step": null,
+        "type": "int"
+      },
+      {
+        "default_value": 0.01,
+        "description": "double parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Entry_Amount",
+        "step": null,
+        "type": "double"
+      },
+      {
+        "default_value": 1053,
+        "description": "int parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Stop_Loss",
+        "step": null,
+        "type": "int"
+      },
+      {
+        "default_value": 0,
+        "description": "int parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Take_Profit",
+        "step": null,
+        "type": "int"
+      },
+      {
+        "default_value": "------",
+        "description": "string parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "___0______",
+        "step": null,
+        "type": "string"
+      },
+      {
+        "default_value": 0,
+        "description": "double parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Ind0Param0",
+        "step": null,
+        "type": "double"
+      },
+      {
+        "default_value": "------",
+        "description": "string parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "___1______",
+        "step": null,
+        "type": "string"
+      },
+      {
+        "default_value": 39,
+        "description": "int parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Ind1Param0",
+        "step": null,
+        "type": "int"
+      },
+      {
+        "default_value": 0,
+        "description": "double parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Ind1Param1",
+        "step": null,
+        "type": "double"
+      },
+      {
+        "default_value": "------",
+        "description": "string parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "___2______",
+        "step": null,
+        "type": "string"
+      },
+      {
+        "default_value": 30,
+        "description": "int parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Ind2Param0",
+        "step": null,
+        "type": "int"
+      },
+      {
+        "default_value": 3.4,
+        "description": "double parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Ind2Param1",
+        "step": null,
+        "type": "double"
+      },
+      {
+        "default_value": "------",
+        "description": "string parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "___3______",
+        "step": null,
+        "type": "string"
+      },
+      {
+        "default_value": 22,
+        "description": "int parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Ind3Param0",
+        "step": null,
+        "type": "int"
+      },
+      {
+        "default_value": 7,
+        "description": "int parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Ind3Param1",
+        "step": null,
+        "type": "int"
+      },
+      {
+        "default_value": "------",
+        "description": "string parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Entry_prot__",
+        "step": null,
+        "type": "string"
+      },
+      {
+        "default_value": 0,
+        "description": "int parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Max_Spread",
+        "step": null,
+        "type": "int"
+      },
+      {
+        "default_value": 0,
+        "description": "int parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Max_OpenPos",
+        "step": null,
+        "type": "int"
+      },
+      {
+        "default_value": 0,
+        "description": "double parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Max_OpenLots",
+        "step": null,
+        "type": "double"
+      },
+      {
+        "default_value": "------",
+        "description": "string parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Daily_prot__",
+        "step": null,
+        "type": "string"
+      },
+      {
+        "default_value": 0,
+        "description": "int parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "MaxDailyLoss",
+        "step": null,
+        "type": "int"
+      },
+      {
+        "default_value": 0,
+        "description": "double parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Max_Daily_DD",
+        "step": null,
+        "type": "double"
+      },
+      {
+        "default_value": 0,
+        "description": "int parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Daily_Reset",
+        "step": null,
+        "type": "int"
+      },
+      {
+        "default_value": "------",
+        "description": "string parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Account_prot",
+        "step": null,
+        "type": "string"
+      },
+      {
+        "default_value": 0,
+        "description": "int parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Min_Equity",
+        "step": null,
+        "type": "int"
+      },
+      {
+        "default_value": 0,
+        "description": "double parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "MaxEquity_DD",
+        "step": null,
+        "type": "double"
+      },
+      {
+        "default_value": 0,
+        "description": "int parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Max_Equity",
+        "step": null,
+        "type": "int"
+      },
+      {
+        "default_value": "------",
+        "description": "string parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "_NewsFilter_",
+        "step": null,
+        "type": "string"
+      },
+      {
+        "default_value": "NewsFilter_Disabled",
+        "description": "NewsFilterPriority parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "News_Priority",
+        "step": null,
+        "type": "NewsFilterPriority"
+      },
+      {
+        "default_value": "USD,EUR,JPY,GBP,CHF",
+        "description": "string parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "News_Currencies",
+        "step": null,
+        "type": "string"
+      },
+      {
+        "default_value": 2,
+        "description": "int parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "News_BeforeMedium",
+        "step": null,
+        "type": "int"
+      },
+      {
+        "default_value": 2,
+        "description": "int parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "News_AfterMedium",
+        "step": null,
+        "type": "int"
+      },
+      {
+        "default_value": 2,
+        "description": "int parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "News_BeforeHigh",
+        "step": null,
+        "type": "int"
+      },
+      {
+        "default_value": 5,
+        "description": "int parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "News_AfterHigh",
+        "step": null,
+        "type": "int"
+      },
+      {
+        "default_value": 10,
+        "description": "int parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "News_ViewCount",
+        "step": null,
+        "type": "int"
+      },
+      {
+        "default_value": "------",
+        "description": "string parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "_Settings___",
+        "step": null,
+        "type": "string"
+      },
+      {
+        "default_value": false,
+        "description": "bool parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Show_inds",
+        "step": null,
+        "type": "bool"
+      },
+      {
+        "default_value": "------",
+        "description": "string parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "__Stats_____",
+        "step": null,
+        "type": "string"
+      },
+      {
+        "default_value": true,
+        "description": "bool parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Pos_Stat",
+        "step": null,
+        "type": "bool"
+      },
+      {
+        "default_value": true,
+        "description": "bool parameter",
+        "max_value": null,
+        "min_value": null,
+        "name": "Robot_Stats",
+        "step": null,
+        "type": "bool"
+      }
+    ],
+    "symbols": [
+      "GET"
+    ],
+    "timeframes": [
+      "D1"
+    ],
+    "trading_rules": [
+      {
+        "actions": [
+          "OrderSend(command,Entry_Amount,stopLoss,takeProfit,0)"
+        ],
+        "conditions": [],
+        "direction": "both",
+        "indicators_used": [],
+        "line_number": 1,
+        "type": "entry"
+      },
+      {
+        "actions": [
+          "OrderSend(command,posLots,0,0,posTicket)"
+        ],
+        "conditions": [],
+        "direction": "both",
+        "indicators_used": [],
+        "line_number": 1,
+        "type": "entry"
+      },
+      {
+        "actions": [
+          "OrderSend(int command,double lots,double stopLoss,double takeProfit,ulong ticket)"
+        ],
+        "conditions": [],
+        "direction": "both",
+        "indicators_used": [],
+        "line_number": 1,
+        "type": "entry"
+      },
+      {
+        "actions": [
+          "OrderSend(request,result)"
+        ],
+        "conditions": [],
+        "direction": "both",
+        "indicators_used": [],
+        "line_number": 1,
+        "type": "entry"
+      },
+      {
+        "actions": [
+          "OrderSend(request,result)"
+        ],
+        "conditions": [],
+        "direction": "both",
+        "indicators_used": [],
+        "line_number": 1,
+        "type": "entry"
+      }
+    ]
+  },
+  "created_at": "2025-07-08T00:45:37.698258",
+  "status": "inactive",
+  "source": "code_import",
+  "id": "4df7a258"
+}

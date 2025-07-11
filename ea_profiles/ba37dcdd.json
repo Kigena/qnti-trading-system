@@ -1,0 +1,25 @@
+{
+  "name": "Demo Trading EA",
+  "magic_number": 54321,
+  "strategy_type": "scalping",
+  "symbols": [
+    "EURUSD",
+    "GBPUSD"
+  ],
+  "timeframes": [
+    "M5",
+    "H1"
+  ],
+  "parameters": {
+    "StopLoss": 50,
+    "TakeProfit": 150,
+    "LotSize": 0.1,
+    "MaxTrades": 5
+  },
+  "risk_level": "medium",
+  "description": "Scalping EA with tight stop losses",
+  "original_code": "// Demo EA code would be here...",
+  "id": "ba37dcdd",
+  "created_at": "2024-01-09T10:30:00",
+  "updated_at": "2024-01-09T10:30:00"
+}

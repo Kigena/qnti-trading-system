@@ -1,0 +1,56 @@
+{
+  "llm": {
+    "model": "llama3",
+    "base_url": "http://localhost:11434",
+    "temperature": 0.7,
+    "max_tokens": 2000,
+    "timeout": 30
+  },
+  "chroma": {
+    "path": "./qnti_memory",
+    "collection_name": "qnti_context",
+    "persist_directory": "./qnti_memory"
+  },
+  "news": {
+    "api_key": "",
+    "update_interval": 60,
+    "sources": ["reuters", "bloomberg", "cnbc"],
+    "queries": ["forex trading", "market analysis", "economic indicators"]
+  },
+  "market_data": {
+    "symbols": ["SPY", "QQQ", "DXY", "GLD", "BTC-USD", "EURUSD", "GBPUSD", "USDJPY"],
+    "update_interval": 30
+  },
+  "scheduling": {
+    "daily_brief_hour": 6,
+    "daily_brief_minute": 0,
+    "news_update_interval": 60,
+    "market_data_interval": 30,
+    "context_cleanup_hour": 2
+  },
+  "security": {
+    "api_key": "qnti-secret-key",
+    "jwt_secret": "qnti-jwt-secret-2024",
+    "token_expiry_hours": 24
+  },
+  "integration": {
+    "trade_log_path": "./trade_log.csv",
+    "open_trades_path": "./open_trades.json",
+    "backup_path": "./qnti_backups",
+    "enable_auto_context": true,
+    "context_window_size": 20
+  },
+  "features": {
+    "enable_news_analysis": true,
+    "enable_market_sentiment": true,
+    "enable_trade_correlation": true,
+    "enable_performance_insights": true,
+    "enable_risk_assessment": true
+  },
+  "limits": {
+    "max_context_documents": 1000,
+    "max_daily_requests": 10000,
+    "max_response_length": 5000,
+    "context_retention_days": 30
+  }
+} 

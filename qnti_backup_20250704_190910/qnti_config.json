@@ -1,0 +1,14 @@
+{
+  "system": {
+    "auto_trading": false,
+    "vision_auto_analysis": true,
+    "ea_monitoring": true,
+    "api_port": 5000,
+    "debug_mode": true
+  },
+  "integration": {
+    "mt5_enabled": true,
+    "vision_enabled": true,
+    "dashboard_enabled": true
+  }
+}

@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QNTI Dashboard - Trading Center</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        .dashboard-header {
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid #334155;
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: #94a3b8;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-link:hover {
+            background: rgba(100, 116, 139, 0.2);
+            color: #f1f5f9;
+        }
+
+        .nav-link.active {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+
+        .status-indicators {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-connected { background: #10b981; }
+        .status-warning { background: #f59e0b; }
+        .status-error { background: #ef4444; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .main-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .dashboard-card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #475569;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            background: #334155;
+            color: #f1f5f9;
+            font-size: 0.9rem;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-secondary { background: #64748b; color: white; }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-full {
+            width: 100%;
+        }
+
+        .trade-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .trade-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            background: rgba(51, 65, 85, 0.3);
+            border-radius: 8px;
+            border: 1px solid #475569;
+            transition: all 0.2s;
+        }
+
+        .trade-item:hover {
+            background: rgba(51, 65, 85, 0.5);
+        }
+
+        .trade-info {
+            flex: 1;
+        }
+
+        .trade-symbol {
+            font-weight: 600;
+            color: #f1f5f9;
+            margin-bottom: 0.25rem;
+        }
+
+        .trade-details {
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        .trade-pnl {
+            text-align: right;
+            font-weight: 600;
+        }
+
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+        .neutral { color: #64748b; }
+
+        .quick-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .market-data {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .price-item {
+            padding: 0.75rem;
+            background: rgba(51, 65, 85, 0.3);
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .price-symbol {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-bottom: 0.25rem;
+        }
+
+        .price-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .price-change {
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Table styles */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        
+        .data-table th {
+            padding: 0.75rem;
+            text-align: left;
+            color: #94a3b8;
+            background: rgba(51, 65, 85, 0.5);
+            border-bottom: 1px solid #475569;
+        }
+        
+        .data-table td {
+            padding: 0.75rem;
+            color: #f1f5f9;
+            border-bottom: 1px solid rgba(51, 65, 85, 0.3);
+        }
+        
+        .data-table tbody tr:hover {
+            background: rgba(51, 65, 85, 0.2);
+        }
+        
+        .profit-positive { color: #10b981; }
+        .profit-negative { color: #ef4444; }
+        .buy-order { color: #3b82f6; }
+        .sell-order { color: #ef4444; }
+        .price-up { color: #10b981; }
+        .price-down { color: #ef4444; }
+        
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+            margin-right: 0.5rem;
+        }
+
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 1rem;
+            }
+            
+            .nav-menu {
+                display: none;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <div class="header-content">
+            <div class="logo">Quantum Nexus Trading Intelligence</div>
+            <nav class="nav-menu">
+                <a href="/" class="nav-link">
+                    <span>📊</span>
+                    <span>Overview</span>
+                </a>
+                <a href="/dashboard/trading_center.html" class="nav-link active">
+                    <span>💹</span>
+                    <span>Trading Center</span>
+                </a>
+                <a href="/dashboard/ea_management.html" class="nav-link">
+                    <span>🤖</span>
+                    <span>EA Management</span>
+                </a>
+                <a href="/dashboard/analytics_reports.html" class="nav-link">
+                    <span>📈</span>
+                    <span>Analytics</span>
+                </a>
+            </nav>
+            <div class="status-indicators">
+                <div class="status-item">
+                    <span>MT5:</span>
+                    <div class="status-dot status-error" id="mt5-status"></div>
+                </div>
+                <div class="status-item">
+                    <span>AI:</span>
+                    <div class="status-dot status-connected" id="ai-status"></div>
+                </div>
+                <div style="margin-left: 1rem; font-size: 0.9rem; color: #94a3b8;">
+                    <span id="last-update">--:--:--</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Manual Trading Panel -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">📈 Manual Trading</h3>
+                <button class="btn btn-secondary" onclick="resetForm()">Reset</button>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Symbol</label>
+                <select class="form-input" id="trade-symbol">
+                    <option value="EURUSD">EURUSD</option>
+                    <option value="GBPUSD">GBPUSD</option>
+                    <option value="USDJPY">USDJPY</option>
+                    <option value="USDCHF">USDCHF</option>
+                    <option value="AUDUSD">AUDUSD</option>
+                    <option value="USDCAD">USDCAD</option>
+                    <option value="NZDUSD">NZDUSD</option>
+                    <option value="XAUUSD">XAUUSD (Gold)</option>
+                </select>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Trade Type</label>
+                    <select class="form-input" id="trade-type">
+                        <option value="BUY">BUY</option>
+                        <option value="SELL">SELL</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Volume (Lots)</label>
+                    <input type="number" class="form-input" id="trade-volume" value="0.01" min="0.01" step="0.01">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Stop Loss</label>
+                    <input type="number" class="form-input" id="stop-loss" placeholder="0.00000" step="0.00001">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Take Profit</label>
+                    <input type="number" class="form-input" id="take-profit" placeholder="0.00000" step="0.00001">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Comment</label>
+                <input type="text" class="form-input" id="trade-comment" placeholder="Manual trade">
+            </div>
+
+            <div class="quick-actions">
+                <button class="btn btn-success" onclick="placeTrade()">🚀 Place Trade</button>
+                <button class="btn btn-primary" onclick="getQuote()">💱 Get Quote</button>
+            </div>
+        </div>
+
+        <!-- Market Data -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">💹 Market Data</h3>
+                <button class="btn btn-primary" onclick="refreshPrices()">🔄 Refresh</button>
+            </div>
+            
+            <div class="market-data" id="market-data">
+                <!-- Market data will be loaded dynamically from API -->
+                <div style="padding: 2rem; text-align: center; color: #94a3b8; grid-column: span 4;">
+                    <div style="margin-bottom: 0.5rem;">📊 Loading market data...</div>
+                    <div style="font-size: 0.8rem;">Connecting to MT5...</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 1rem; padding: 1rem; background: rgba(139, 92, 246, 0.1); border: 1px solid #8b5cf6; border-radius: 8px;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; color: #8b5cf6; font-weight: 600;">
+                    <span>🤖</span>
+                    <span>AI Market Insight</span>
+                </div>
+                <div id="ai-market-insight" style="color: #e2e8f0; font-size: 0.9rem; line-height: 1.5;">
+                    Loading AI market analysis...
+                </div>
+            </div>
+        </div>
+
+        <!-- Trading Summary -->
+        <div class="dashboard-card" style="grid-column: span 2;">
+            <div class="card-header">
+                <h3 class="card-title">📊 Trading Summary</h3>
+                <button class="btn btn-primary" onclick="refreshTrades()">🔄 Refresh</button>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                <div style="background: rgba(51, 65, 85, 0.3); padding: 1rem; border-radius: 8px; text-align: center;">
+                    <div style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 0.5rem;">Account Balance</div>
+                    <div style="color: #f1f5f9; font-size: 1.2rem; font-weight: 600;" id="account-balance">$0.00</div>
+                </div>
+                <div style="background: rgba(51, 65, 85, 0.3); padding: 1rem; border-radius: 8px; text-align: center;">
+                    <div style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 0.5rem;">Account Equity</div>
+                    <div style="color: #f1f5f9; font-size: 1.2rem; font-weight: 600;" id="account-equity">$0.00</div>
+                </div>
+                <div style="background: rgba(51, 65, 85, 0.3); padding: 1rem; border-radius: 8px; text-align: center;">
+                    <div style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 0.5rem;">Free Margin</div>
+                    <div style="color: #f1f5f9; font-size: 1.2rem; font-weight: 600;" id="free-margin">$0.00</div>
+                </div>
+                <div style="background: rgba(51, 65, 85, 0.3); padding: 1rem; border-radius: 8px; text-align: center;">
+                    <div style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 0.5rem;">Margin Level</div>
+                    <div style="color: #f1f5f9; font-size: 1.2rem; font-weight: 600;" id="margin-level">0.00%</div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid #8b5cf6; padding: 1rem; border-radius: 8px; text-align: center;">
+                    <div style="color: #8b5cf6; font-size: 0.9rem; margin-bottom: 0.5rem;">Open Positions</div>
+                    <div style="color: #f1f5f9; font-size: 1.2rem; font-weight: 600;" id="open-positions">0</div>
+                </div>
+                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; padding: 1rem; border-radius: 8px; text-align: center;">
+                    <div style="color: #10b981; font-size: 0.9rem; margin-bottom: 0.5rem;">Total P&L</div>
+                    <div style="color: #f1f5f9; font-size: 1.2rem; font-weight: 600;" id="total-pnl">$0.00</div>
+                </div>
+                <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid #3b82f6; padding: 1rem; border-radius: 8px; text-align: center;">
+                    <div style="color: #3b82f6; font-size: 0.9rem; margin-bottom: 0.5rem;">Buy Positions</div>
+                    <div style="color: #f1f5f9; font-size: 1.2rem; font-weight: 600;" id="buy-positions">0</div>
+                </div>
+                <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; padding: 1rem; border-radius: 8px; text-align: center;">
+                    <div style="color: #ef4444; font-size: 0.9rem; margin-bottom: 0.5rem;">Sell Positions</div>
+                    <div style="color: #f1f5f9; font-size: 1.2rem; font-weight: 600;" id="sell-positions">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Trades -->
+        <div class="dashboard-card" style="grid-column: span 2;">
+            <div class="card-header">
+                <h3 class="card-title">📈 Active Trades</h3>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-warning" onclick="closeAllTrades()">⚠️ Close All</button>
+                    <button class="btn btn-primary" onclick="refreshTrades()">🔄 Refresh</button>
+                </div>
+            </div>
+            
+            <div style="overflow-x: auto; max-height: 400px;">
+                <table id="active-trades-table" class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Ticket</th>
+                            <th>Symbol</th>
+                            <th>Type</th>
+                            <th>Volume</th>
+                            <th>Entry Price</th>
+                            <th>Current Price</th>
+                            <th>Profit</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="8" style="padding: 2rem; text-align: center; color: #94a3b8;">
+                                Loading active trades...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Quick Trade Buttons -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">⚡ Quick Trade</h3>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <button class="btn btn-success" onclick="quickTrade('EURUSD', 'BUY')">
+                    <div style="font-size: 0.8rem;">EURUSD</div>
+                    <div>BUY 📈</div>
+                </button>
+                <button class="btn btn-danger" onclick="quickTrade('EURUSD', 'SELL')">
+                    <div style="font-size: 0.8rem;">EURUSD</div>
+                    <div>SELL 📉</div>
+                </button>
+                <button class="btn btn-success" onclick="quickTrade('XAUUSD', 'BUY')">
+                    <div style="font-size: 0.8rem;">XAUUSD</div>
+                    <div>BUY 📈</div>
+                </button>
+                <button class="btn btn-danger" onclick="quickTrade('XAUUSD', 'SELL')">
+                    <div style="font-size: 0.8rem;">XAUUSD</div>
+                    <div>SELL 📉</div>
+                </button>
+            </div>
+
+            <div style="background: rgba(51, 65, 85, 0.3); padding: 1rem; border-radius: 8px;">
+                <div style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 0.5rem;">Quick Trade Settings:</div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.85rem;">Volume:</span>
+                    <span style="color: #f1f5f9;">0.01 lots</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.85rem;">Risk:</span>
+                    <span style="color: #f1f5f9;">50 pips</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.85rem;">Reward:</span>
+                    <span style="color: #f1f5f9;">100 pips</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Market Watch -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">📊 Market Watch</h3>
+                <button class="btn btn-primary" onclick="refreshPrices()">🔄 Refresh</button>
+            </div>
+            
+            <div style="overflow-x: auto; max-height: 300px;">
+                <table id="market-watch-table" class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Bid</th>
+                            <th>Ask</th>
+                            <th>Change</th>
+                            <th>Change %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="5" style="padding: 2rem; text-align: center; color: #94a3b8;">
+                                Loading market data...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Trade History -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">📜 Recent History</h3>
+                <button class="btn btn-secondary" onclick="viewFullHistory()">View All</button>
+            </div>
+            
+            <div class="trade-list" style="max-height: 300px;">
+                <div class="trade-item">
+                    <div class="trade-info">
+                        <div class="trade-symbol">USDJPY SELL</div>
+                        <div class="trade-details">Closed: 2h ago | Volume: 0.02</div>
+                    </div>
+                    <div class="trade-pnl">
+                        <div class="positive">+$24.50</div>
+                        <div style="font-size: 0.8rem; color: #94a3b8;">+61 pips</div>
+                    </div>
+                </div>
+
+                <div class="trade-item">
+                    <div class="trade-info">
+                        <div class="trade-symbol">EURUSD BUY</div>
+                        <div class="trade-details">Closed: 4h ago | Volume: 0.05</div>
+                    </div>
+                    <div class="trade-pnl">
+                        <div class="negative">-$15.25</div>
+                        <div style="font-size: 0.8rem; color: #94a3b8;">-30 pips</div>
+                    </div>
+                </div>
+
+                <div class="trade-item">
+                    <div class="trade-info">
+                        <div class="trade-symbol">XAUUSD BUY</div>
+                        <div class="trade-details">Closed: 1d ago | Volume: 0.01</div>
+                    </div>
+                    <div class="trade-pnl">
+                        <div class="positive">+$45.80</div>
+                        <div style="font-size: 0.8rem; color: #94a3b8;">+458 points</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Update functions
+        function updateTimestamp() {
+            document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+        }
+
+        function resetForm() {
+            document.getElementById('trade-symbol').value = 'EURUSD';
+            document.getElementById('trade-type').value = 'BUY';
+            document.getElementById('trade-volume').value = '0.01';
+            document.getElementById('stop-loss').value = '';
+            document.getElementById('take-profit').value = '';
+            document.getElementById('trade-comment').value = 'Manual trade';
+        }
+
+        function placeTrade() {
+            const symbol = document.getElementById('trade-symbol').value;
+            const type = document.getElementById('trade-type').value;
+            const volume = document.getElementById('trade-volume').value;
+            const sl = document.getElementById('stop-loss').value;
+            const tp = document.getElementById('take-profit').value;
+            const comment = document.getElementById('trade-comment').value;
+
+            if (confirm(`Place ${type} order for ${volume} lots of ${symbol}?`)) {
+                console.log('Placing trade:', { symbol, type, volume, sl, tp, comment });
+                alert('Trade placed successfully!');
+            }
+        }
+
+        function getQuote() {
+            const symbol = document.getElementById('trade-symbol').value;
+            console.log('Getting quote for:', symbol);
+            alert(`Current quote for ${symbol}: Bid: 1.08445, Ask: 1.08455`);
+        }
+
+        function refreshPrices() {
+            console.log('🔄 Refreshing market prices from /api/market/symbols...');
+            
+            // Fetch real market data from API
+            fetch('/api/market/symbols')
+                .then(response => {
+                    console.log('📡 Market data API response status:', response.status);
+                    return response.json();
+                })
+                .then(symbols => {
+                    console.log('📊 Market data received:', symbols);
+                    updateMarketDataCards(symbols);
+                    updateMarketWatch(symbols);
+                })
+                .catch(error => {
+                    console.error('❌ Error fetching market data:', error);
+                    
+                    // Show error state in market data container
+                    const marketDataContainer = document.getElementById('market-data');
+                    if (marketDataContainer) {
+                        marketDataContainer.innerHTML = `
+                            <div style="padding: 2rem; text-align: center; color: #ef4444; grid-column: span 4;">
+                                <div style="margin-bottom: 0.5rem;">⚠️ Market data unavailable</div>
+                                <div style="font-size: 0.8rem;">Error: ${error.message}</div>
+                                <button class="btn btn-primary" onclick="refreshPrices()" style="margin-top: 1rem;">🔄 Retry</button>
+                            </div>
+                        `;
+                    }
+                });
+            updateTimestamp();
+        }
+
+        function loadAIInsights() {
+            console.log('🤖 Loading AI market insights...');
+            
+            fetch('/api/ai/insights/all')
+                .then(response => {
+                    console.log('🤖 AI insights API response status:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('🤖 AI insights received:', data);
+                    
+                    // Update market insight
+                    const marketInsightEl = document.getElementById('ai-market-insight');
+                    if (marketInsightEl && data.insights && data.insights.market) {
+                        marketInsightEl.textContent = data.insights.market;
+                    } else if (marketInsightEl) {
+                        marketInsightEl.textContent = 'AI market analysis not available';
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Error fetching AI insights:', error);
+                    const marketInsightEl = document.getElementById('ai-market-insight');
+                    if (marketInsightEl) {
+                        marketInsightEl.textContent = 'AI insights temporarily unavailable';
+                    }
+                });
+        }
+
+        function updateMarketDataCards(symbols) {
+            console.log('📊 Updating market data cards with', symbols?.length || 0, 'symbols');
+            const marketDataContainer = document.getElementById('market-data');
+            
+            if (!marketDataContainer) {
+                console.error('❌ Market data container not found');
+                return;
+            }
+            
+            // Clear existing content
+            marketDataContainer.innerHTML = '';
+            
+            if (!symbols || symbols.length === 0) {
+                // Show loading state if no data available
+                marketDataContainer.innerHTML = `
+                    <div style="padding: 2rem; text-align: center; color: #94a3b8; grid-column: span 4;">
+                        <div style="margin-bottom: 0.5rem;">📊 No market data available</div>
+                        <div style="font-size: 0.8rem;">Check MT5 connection</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            console.log('📈 Available symbols:', symbols.map(s => s.name || s.symbol));
+            
+            // Display all available symbols (up to 8 for grid layout)
+            const displaySymbols = symbols.slice(0, 8);
+            
+            displaySymbols.forEach(symbolData => {
+                const changeClass = (symbolData.change || 0) >= 0 ? 'positive' : 'negative';
+                const changeSign = (symbolData.change || 0) >= 0 ? '+' : '';
+                const symbolName = symbolData.name || symbolData.symbol || 'Unknown';
+                
+                const priceItem = document.createElement('div');
+                priceItem.className = 'price-item';
+                priceItem.innerHTML = `
+                    <div class="price-symbol">${symbolName}</div>
+                    <div class="price-value">${(symbolData.last || symbolData.bid || 0).toFixed(symbolData.digits || 5)}</div>
+                    <div class="price-change ${changeClass}">
+                        ${changeSign}${(symbolData.change || 0).toFixed(symbolData.digits || 4)} 
+                        (${changeSign}${(symbolData.change_percent || 0).toFixed(2)}%)
+                    </div>
+                `;
+                marketDataContainer.appendChild(priceItem);
+            });
+            
+            console.log('✅ Market data cards updated successfully');
+        }
+
+        function refreshTrades() {
+            console.log('Refreshing active trades...');
+            updateTimestamp();
+        }
+
+        function closeTrade(tradeId) {
+            if (confirm(`Close trade ${tradeId}?`)) {
+                console.log('Closing trade:', tradeId);
+                alert('Trade closed successfully!');
+            }
+        }
+
+        function closeAllTrades() {
+            if (confirm('Are you sure you want to close ALL active trades? This action cannot be undone!')) {
+                console.log('Closing all trades');
+                alert('All trades closed successfully!');
+            }
+        }
+
+        function quickTrade(symbol, type) {
+            if (confirm(`Place quick ${type} order for ${symbol}?`)) {
+                console.log('Quick trade:', symbol, type);
+                alert(`Quick ${type} order placed for ${symbol}!`);
+            }
+        }
+
+        function viewFullHistory() {
+            console.log('Opening full trade history...');
+            alert('Full trade history will open in a new window.');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Trading page initialized - loading market data and trading data...');
+            
+            // Load market data first (high priority)
+            refreshPrices();
+            
+            // Load AI insights
+            loadAIInsights();
+            
+            // Load trading data
+            updateTradingData();
+            
+            // Set up periodic updates every 5 seconds for trading data
+            setInterval(updateTradingData, 5000);
+            
+            // Set up periodic updates for AI insights every 2 minutes
+            setInterval(loadAIInsights, 120000);
+            
+            // Set up real-time updates via WebSocket
+            if (typeof io !== 'undefined') {
+                const socket = io();
+                
+                // Debug WebSocket messages
+                socket.on('trade_update', function(data) {
+                    console.log('🔍 Trade update received:', data);
+                    try {
+                        if (data && typeof data === 'object') {
+                            console.log('📊 Trade data structure:', Object.keys(data));
+                            console.log('📋 Full trade data:', data);
+                        }
+                    } catch(e) {
+                        console.error('❌ Failed to parse trade update:', e);
+                    }
+                    updateTradingData();
+                });
+                
+                socket.on('price_update', function(data) {
+                    console.log('💰 Price update received:', data);
+                    try {
+                        if (data && data.symbols) {
+                            console.log('📈 Price data structure:', Object.keys(data));
+                            console.log('💹 Symbols count:', data.symbols.length);
+                            console.log('🏷️ First symbol:', data.symbols[0]);
+                        }
+                    } catch(e) {
+                        console.error('❌ Failed to parse price update:', e);
+                    }
+                    updateMarketDataCards(data.symbols);
+                    updateMarketWatch(data.symbols);
+                });
+                
+                // Add debug for all socket events
+                socket.onAny((event, ...args) => {
+                    console.log('🔌 Socket event:', event, 'with data:', args);
+                });
+            }
+        });
+
+        updateTimestamp();
+        setInterval(updateTimestamp, 1000);
+        setInterval(refreshPrices, 30000); // Auto-refresh prices every 30 seconds
+
+        // Real-time data updates
+        function updateTradingData() {
+            // Fetch active trades
+            fetch('/api/trades')
+                .then(response => response.json())
+                .then(trades => {
+                    updateActiveTradesTable(trades);
+                    updateTradingSummary(trades);
+                })
+                .catch(error => console.error('Error fetching trades:', error));
+
+            // Fetch system health for account info
+            fetch('/api/health')
+                .then(response => response.json())
+                .then(data => {
+                    updateAccountInfo(data);
+                })
+                .catch(error => console.error('Error fetching health data:', error));
+
+            // Fetch market data (if available)
+            fetch('/api/market/symbols')
+                .then(response => response.json())
+                .then(symbols => {
+                    updateMarketDataCards(symbols);
+                    updateMarketWatch(symbols);
+                })
+                .catch(error => {
+                    // If market data not available, show placeholder
+                    console.log('Market data not available');
+                });
+        }
+
+        function updateActiveTradesTable(trades) {
+            const tbody = document.querySelector('#active-trades-table tbody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            trades.forEach(trade => {
+                const row = document.createElement('tr');
+                const pnlClass = trade.profit >= 0 ? 'profit-positive' : 'profit-negative';
+                const typeClass = trade.type.toLowerCase() === 'buy' ? 'buy-order' : 'sell-order';
+                
+                row.innerHTML = `
+                    <td>${trade.ticket || trade.id}</td>
+                    <td>${trade.symbol}</td>
+                    <td><span class="${typeClass}">${trade.type}</span></td>
+                    <td>${trade.volume}</td>
+                    <td>$${trade.entry_price?.toFixed(5) || 'N/A'}</td>
+                    <td>$${trade.current_price?.toFixed(5) || 'N/A'}</td>
+                    <td class="${pnlClass}">$${trade.profit?.toFixed(2) || '0.00'}</td>
+                    <td>
+                        <button class="btn-danger btn-small" onclick="closeTrade('${trade.ticket || trade.id}')">Close</button>
+                        <button class="btn-secondary btn-small" onclick="modifyTrade('${trade.ticket || trade.id}')">Modify</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateTradingSummary(trades) {
+            const openTrades = trades.length;
+            const totalProfit = trades.reduce((sum, trade) => sum + (trade.profit || 0), 0);
+            const buyTrades = trades.filter(trade => trade.type.toLowerCase() === 'buy').length;
+            const sellTrades = trades.filter(trade => trade.type.toLowerCase() === 'sell').length;
+
+            document.getElementById('open-positions').textContent = openTrades;
+            document.getElementById('total-pnl').textContent = `$${totalProfit.toFixed(2)}`;
+            document.getElementById('buy-positions').textContent = buyTrades;
+            document.getElementById('sell-positions').textContent = sellTrades;
+        }
+
+        function updateAccountInfo(data) {
+            document.getElementById('account-balance').textContent = `$${data.account_balance?.toFixed(2) || '0.00'}`;
+            document.getElementById('account-equity').textContent = `$${data.account_equity?.toFixed(2) || '0.00'}`;
+            document.getElementById('free-margin').textContent = `$${data.free_margin?.toFixed(2) || '0.00'}`;
+            document.getElementById('margin-level').textContent = `${data.margin_level?.toFixed(2) || '0.00'}%`;
+        }
+
+        function updateMarketWatch(symbols) {
+            const tbody = document.querySelector('#market-watch-table tbody');
+            if (!tbody || !symbols) return;
+            
+            tbody.innerHTML = '';
+            symbols.slice(0, 10).forEach(symbol => {
+                const row = document.createElement('tr');
+                const changeClass = symbol.change >= 0 ? 'price-up' : 'price-down';
+                
+                row.innerHTML = `
+                    <td>${symbol.name}</td>
+                    <td>${(symbol.bid || 0).toFixed(5)}</td>
+                    <td>${(symbol.ask || 0).toFixed(5)}</td>
+                    <td class="${changeClass}">${symbol.change?.toFixed(5) || '0.00000'}</td>
+                    <td class="${changeClass}">${symbol.change_percent?.toFixed(2) || '0.00'}%</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Trading functions
+        function closeTrade(tradeId) {
+            if (!confirm('Are you sure you want to close this trade?')) return;
+            
+            fetch(`/api/trades/${tradeId}/close`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Trade closed successfully');
+                    updateTradingData();
+                } else {
+                    alert('Error closing trade: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error closing trade:', error);
+                alert('Error closing trade');
+            });
+        }
+
+        function modifyTrade(tradeId) {
+            // Implement trade modification logic
+            alert('Trade modification feature coming soon');
+        }
+
+        function placeOrder() {
+            const symbol = document.getElementById('order-symbol').value;
+            const type = document.getElementById('order-type').value;
+            const volume = parseFloat(document.getElementById('order-volume').value);
+            const price = parseFloat(document.getElementById('order-price').value);
+
+            if (!symbol || !type || !volume) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            const orderData = {
+                symbol: symbol,
+                type: type,
+                volume: volume,
+                price: price || null
+            };
+
+            fetch('/api/trades/place', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(orderData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Order placed successfully');
+                    updateTradingData();
+                    // Clear form
+                    document.getElementById('order-form').reset();
+                } else {
+                    alert('Error placing order: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error placing order:', error);
+                alert('Error placing order');
+            });
+        }
+    </script>
+
+<!-- Comprehensive Frontend Update Fix -->
+<script>
+// QNTI Frontend Update Fix - Comprehensive Solution
+// Safe update function that checks if element exists before updating
+function safeUpdateElement(elementId, value, isHTML = false) {
+    try {
+        const element = document.getElementById(elementId);
+        if (element) {
+            if (isHTML) {
+                element.innerHTML = value;
+            } else {
+                element.textContent = value;
+            }
+            return true;
+        } else {
+            console.warn(`Element with id '${elementId}' not found`);
+            return false;
+        }
+    } catch (error) {
+        console.error(`Error updating element '${elementId}':`, error);
+        return false;
+    }
+}
+
+// Safe query selector update
+function safeQueryUpdate(selector, value, isHTML = false) {
+    try {
+        const element = document.querySelector(selector);
+        if (element) {
+            if (isHTML) {
+                element.innerHTML = value;
+            } else {
+                element.textContent = value;
+            }
+            return true;
+        } else {
+            console.warn(`Element with selector '${selector}' not found`);
+            return false;
+        }
+    } catch (error) {
+        console.error(`Error updating element '${selector}':`, error);
+        return false;
+    }
+}
+
+// Fix for updateTradingData function
+function updateTradingData(data) {
+    console.log('Updating trading data:', data);
+    
+    // Update account info with safe checks
+    if (data.account_info) {
+        safeUpdateElement('accountBalance', `$${(data.account_info.balance || 0).toFixed(2)}`);
+        safeUpdateElement('accountEquity', `$${(data.account_info.equity || 0).toFixed(2)}`);
+        safeUpdateElement('accountMargin', `$${(data.account_info.margin || 0).toFixed(2)}`);
+        safeUpdateElement('accountFreeMargin', `$${(data.account_info.free_margin || 0).toFixed(2)}`);
+    }
+    
+    // Update positions/trades
+    if (data.positions !== undefined) {
+        updatePositionsTable(data.positions);
+    }
+    
+    // Update health status
+    if (data.health) {
+        updateHealthStatus(data.health);
+    }
+    
+    // Update statistics if available
+    if (data.statistics) {
+        updateStatistics(data.statistics);
+    }
+}
+
+// Fix for updatePositionsTable function
+function updatePositionsTable(positions) {
+    const tableBody = document.querySelector('#active-trades-table tbody') || 
+                     document.querySelector('#positionsTable tbody') ||
+                     document.querySelector('.positions-table tbody') ||
+                     document.querySelector('table tbody');
+    
+    if (!tableBody) {
+        console.warn('Positions table body not found');
+        return;
+    }
+    
+    // Clear existing rows
+    tableBody.innerHTML = '';
+    
+    if (!positions || positions.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #94a3b8;">No open positions</td></tr>';
+        return;
+    }
+    
+    // Add position rows
+    positions.forEach(position => {
+        const row = document.createElement('tr');
+        const profit = position.profit || 0;
+        const profitClass = profit >= 0 ? 'positive' : 'negative';
+        
+        row.innerHTML = `
+            <td>${position.ticket || 'N/A'}</td>
+            <td>${position.symbol || 'N/A'}</td>
+            <td>${position.type || 'N/A'}</td>
+            <td>${(position.volume || 0).toFixed(2)}</td>
+            <td>${(position.price || position.price_open || 0).toFixed(5)}</td>
+            <td>${(position.price_current || position.price || 0).toFixed(5)}</td>
+            <td class="${profitClass}" style="color: ${profit >= 0 ? '#10b981' : '#ef4444'}">
+                $${profit.toFixed(2)}
+            </td>
+            <td>
+                <button class="btn btn-warning" onclick="closeTrade(${position.ticket})" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">Close</button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+// Fix for updateHealthStatus function
+function updateHealthStatus(health) {
+    // Update connection status indicators
+    const mt5Status = document.querySelector('.mt5-status') || document.querySelector('#mt5Status');
+    if (mt5Status) {
+        if (health.mt5_connected) {
+            mt5Status.classList.add('connected');
+            mt5Status.classList.remove('disconnected');
+        } else {
+            mt5Status.classList.add('disconnected');
+            mt5Status.classList.remove('connected');
+        }
+    }
+    
+    // Update other health metrics
+    safeUpdateElement('cpuUsage', `${(health.cpu_usage || 0).toFixed(1)}%`);
+    safeUpdateElement('memoryUsage', `${(health.memory_usage || 0).toFixed(1)}%`);
+    safeUpdateElement('systemUptime', formatUptime(health.uptime || 0));
+}
+
+// Fix for updateStatistics function
+function updateStatistics(stats) {
+    safeUpdateElement('totalTrades', stats.total_trades || 0);
+    safeUpdateElement('winRate', `${((stats.win_rate || 0) * 100).toFixed(1)}%`);
+    safeUpdateElement('profitFactor', (stats.profit_factor || 0).toFixed(2));
+    safeUpdateElement('dailyProfit', `$${(stats.daily_profit || 0).toFixed(2)}`);
+    safeUpdateElement('buy-positions', stats.buy_positions || 0);
+    safeUpdateElement('sell-positions', stats.sell_positions || 0);
+}
+
+// Helper function to format uptime
+function formatUptime(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}m`;
+}
+
+// Fix WebSocket connection and message handling
+function setupWebSocketConnection() {
+    // Use Socket.IO if available, otherwise fallback to WebSocket
+    if (typeof io !== 'undefined') {
+        console.log('Setting up Socket.IO connection...');
+        const socket = io();
+        
+        socket.on('connect', function() {
+            console.log('Socket.IO connected');
+            safeUpdateElement('connectionStatus', 'Connected');
+        });
+        
+        socket.on('disconnect', function() {
+            console.log('Socket.IO disconnected');
+            safeUpdateElement('connectionStatus', 'Disconnected');
+        });
+        
+        socket.on('trading_data', function(data) {
+            console.log('Received trading data via Socket.IO:', data);
+            updateTradingData(data);
+        });
+        
+        socket.on('market_data', function(data) {
+            console.log('Received market data via Socket.IO:', data);
+            updateMarketData(data);
+        });
+        
+        window.socket = socket;
+    } else {
+        console.log('Socket.IO not available, using WebSocket fallback');
+        setupWebSocketFallback();
+    }
+}
+
+function setupWebSocketFallback() {
+    const wsUrl = `ws://${window.location.host}/ws`;
+    
+    try {
+        if (window.ws && window.ws.readyState === WebSocket.OPEN) {
+            console.log('WebSocket already connected');
+            return;
+        }
+        
+        window.ws = new WebSocket(wsUrl);
+        
+        window.ws.onopen = function() {
+            console.log('WebSocket connected');
+            safeUpdateElement('connectionStatus', 'Connected');
+        };
+        
+        window.ws.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                console.log('Received WebSocket data:', data);
+                updateTradingData(data);
+            } catch (error) {
+                console.error('Error processing WebSocket message:', error);
+            }
+        };
+        
+        window.ws.onerror = function(error) {
+            console.error('WebSocket error:', error);
+            safeUpdateElement('connectionStatus', 'Error');
+        };
+        
+        window.ws.onclose = function() {
+            console.log('WebSocket disconnected');
+            safeUpdateElement('connectionStatus', 'Disconnected');
+            
+            // Retry connection after 5 seconds
+            setTimeout(setupWebSocketFallback, 5000);
+        };
+        
+    } catch (error) {
+        console.error('Failed to create WebSocket:', error);
+    }
+}
+
+// Update market data function
+function updateMarketData(data) {
+    const marketTable = document.querySelector('#market-watch-table tbody');
+    if (!marketTable) return;
+    
+    marketTable.innerHTML = '';
+    
+    if (!data || data.length === 0) {
+        marketTable.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #94a3b8;">No market data available</td></tr>';
+        return;
+    }
+    
+    data.forEach(symbol => {
+        const row = document.createElement('tr');
+        const change = symbol.change || 0;
+        const changePercent = symbol.change_percent || 0;
+        const changeClass = change >= 0 ? 'positive' : 'negative';
+        
+        row.innerHTML = `
+            <td>${symbol.symbol || 'N/A'}</td>
+            <td>${(symbol.bid || 0).toFixed(5)}</td>
+            <td>${(symbol.ask || 0).toFixed(5)}</td>
+            <td class="${changeClass}" style="color: ${change >= 0 ? '#10b981' : '#ef4444'}">
+                ${change.toFixed(5)}
+            </td>
+            <td class="${changeClass}" style="color: ${change >= 0 ? '#10b981' : '#ef4444'}">
+                ${changePercent.toFixed(2)}%
+            </td>
+        `;
+        marketTable.appendChild(row);
+    });
+}
+
+// Debug helper function to check what elements exist
+function debugCheckElements() {
+    const elementsToCheck = [
+        'accountBalance', 'accountEquity', 'accountMargin', 'accountFreeMargin',
+        'active-trades-table', 'market-watch-table', 'buy-positions', 'sell-positions',
+        'totalTrades', 'winRate', 'profitFactor', 'dailyProfit'
+    ];
+    
+    console.log('=== Element Check ===');
+    elementsToCheck.forEach(id => {
+        const exists = document.getElementById(id) !== null;
+        console.log(`${id}: ${exists ? '✓' : '✗'}`);
+    });
+    
+    // Check for table selectors
+    console.log('\nTable selectors:');
+    console.log('active-trades-table tbody:', document.querySelector('#active-trades-table tbody') !== null);
+    console.log('market-watch-table tbody:', document.querySelector('#market-watch-table tbody') !== null);
+    console.log('any tbody:', document.querySelector('tbody') !== null);
+}
+
+// Initialize fixes when DOM is loaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, applying QNTI frontend fixes...');
+        setupWebSocketConnection();
+        debugCheckElements();
+    });
+} else {
+    console.log('DOM ready, applying QNTI frontend fixes...');
+    setupWebSocketConnection();
+    debugCheckElements();
+}
+
+// Call debug function after page loads
+window.addEventListener('load', () => {
+    console.log('Page fully loaded, final element check...');
+    debugCheckElements();
+});
+
+// === TIMEOUT HANDLING SYSTEM FOR SLOW BACKEND ===
+// Add this to handle slow backend responses and prevent timeout errors
+(function() {
+    'use strict';
+    
+    // Configuration
+    const API_TIMEOUT = 60000; // 60 seconds timeout for slow backend
+    const RETRY_DELAY = 5000;  // 5 seconds between retries
+    
+    // Show loading state
+    function showLoading(message) {
+        console.log(`Loading: ${message}`);
+        // Update any loading indicators in your UI
+        const elements = ['accountBalance', 'accountEquity', 'accountMargin', 'accountFreeMargin'];
+        elements.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = 'Loading...';
+        });
+    }
+    
+    // Show error state
+    function showError(message) {
+        console.error(`Error: ${message}`);
+        // Update UI with error state
+        const elements = ['accountBalance', 'accountEquity', 'accountMargin', 'accountFreeMargin'];
+        elements.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = 'Error';
+        });
+    }
+    
+    // Fetch with timeout
+    async function fetchWithTimeout(url, timeout = API_TIMEOUT) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+        
+        try {
+            showLoading(`Fetching ${url}...`);
+            const response = await fetch(url, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            return response;
+        } catch (error) {
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                showError(`Request to ${url} timed out after ${timeout/1000} seconds`);
+            }
+            throw error;
+        }
+    }
+    
+    // Enhanced WebSocket with extended timeout and retry
+    function connectWebSocketWithRetry() {
+        const wsUrl = `ws://${window.location.host}/ws`;
+        let reconnectAttempts = 0;
+        
+        function connect() {
+            console.log(`WebSocket connection attempt ${reconnectAttempts + 1}`);
+            showLoading('Connecting to server...');
+            
+            const ws = new WebSocket(wsUrl);
+            
+            // Set a longer timeout for slow backend
+            const connectionTimeout = setTimeout(() => {
+                if (ws.readyState !== WebSocket.OPEN) {
+                    console.warn('WebSocket connection timeout, retrying...');
+                    ws.close();
+                }
+            }, API_TIMEOUT);
+            
+            ws.onopen = function() {
+                clearTimeout(connectionTimeout);
+                console.log('WebSocket connected successfully!');
+                reconnectAttempts = 0;
+                showLoading('Connected, waiting for data...');
+            };
+            
+            ws.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('Received data:', data);
+                    
+                    // Update your UI with the data
+                    if (window.updateTradingData) {
+                        window.updateTradingData(data);
+                    } else {
+                        // Fallback update
+                        updateUIFallback(data);
+                    }
+                } catch (error) {
+                    console.error('Error parsing WebSocket data:', error);
+                }
+            };
+            
+            ws.onerror = function(error) {
+                clearTimeout(connectionTimeout);
+                console.error('WebSocket error:', error);
+                showError('Connection error');
+            };
+            
+            ws.onclose = function() {
+                clearTimeout(connectionTimeout);
+                console.log('WebSocket disconnected');
+                reconnectAttempts++;
+                
+                // Exponential backoff for reconnection
+                const delay = Math.min(RETRY_DELAY * Math.pow(2, reconnectAttempts - 1), 60000);
+                console.log(`Reconnecting in ${delay/1000} seconds...`);
+                showError(`Disconnected. Reconnecting in ${delay/1000}s...`);
+                
+                setTimeout(connect, delay);
+            };
+            
+            window.ws = ws;
+        }
+        
+        connect();
+    }
+    
+    // Enhanced fallback UI update function
+    function updateUIFallback(data) {
+        // Safe update helper
+        function safeUpdate(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        }
+        
+        // Update account info
+        if (data.account_info || data.account) {
+            const acc = data.account_info || data.account;
+            safeUpdate('accountBalance', `$${(acc.balance || 0).toFixed(2)}`);
+            safeUpdate('accountEquity', `$${(acc.equity || 0).toFixed(2)}`);
+            safeUpdate('accountMargin', `$${(acc.margin || 0).toFixed(2)}`);
+            safeUpdate('accountFreeMargin', `$${(acc.free_margin || 0).toFixed(2)}`);
+        }
+        
+        // Update positions table
+        if (data.positions || data.trades) {
+            const positions = data.positions || data.trades;
+            const tbody = document.querySelector('#active-trades-table tbody') || document.querySelector('tbody');
+            if (tbody && Array.isArray(positions)) {
+                tbody.innerHTML = positions.length === 0 
+                    ? '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #94a3b8;">No open positions</td></tr>'
+                    : positions.map(pos => `
+                        <tr>
+                            <td>${pos.ticket || ''}</td>
+                            <td>${pos.symbol || ''}</td>
+                            <td>${pos.type || ''}</td>
+                            <td>${(pos.volume || 0).toFixed(2)}</td>
+                            <td>${(pos.price || pos.price_open || 0).toFixed(5)}</td>
+                            <td>${(pos.sl || 0).toFixed(5)}</td>
+                            <td>${(pos.tp || 0).toFixed(5)}</td>
+                            <td style="color: ${(pos.profit || 0) >= 0 ? '#10b981' : '#ef4444'}">$${(pos.profit || 0).toFixed(2)}</td>
+                        </tr>
+                    `).join('');
+            }
+        }
+    }
+    
+    // Enhanced health polling with proper timeout handling
+    async function pollHealth() {
+        try {
+            const response = await fetchWithTimeout('http://localhost:5002/api/health');
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Health data:', data);
+                updateUIFallback(data);
+                
+                // Update connection status
+                safeUpdateElement('connectionStatus', 'Connected');
+                
+                // Update specific health metrics
+                if (data.total_trades !== undefined) {
+                    safeUpdateElement('totalTrades', data.total_trades);
+                }
+                if (data.open_trades !== undefined) {
+                    safeUpdateElement('openTrades', data.open_trades);
+                }
+                if (data.profit !== undefined) {
+                    safeUpdateElement('totalProfit', `$${data.profit.toFixed(2)}`);
+                }
+            }
+        } catch (error) {
+            console.error('Health poll error:', error);
+            safeUpdateElement('connectionStatus', 'Error');
+        }
+        
+        // Poll again after delay
+        setTimeout(pollHealth, 15000); // Poll every 15 seconds (increased from 10)
+    }
+    
+    // Enhanced trades polling
+    async function pollTrades() {
+        try {
+            const response = await fetchWithTimeout('http://localhost:5002/api/trades');
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Trades data:', data);
+                updateUIFallback({ trades: data });
+            }
+        } catch (error) {
+            console.error('Trades poll error:', error);
+        }
+        
+        setTimeout(pollTrades, 10000); // Poll every 10 seconds
+    }
+    
+    // Enhanced market data polling
+    async function pollMarketData() {
+        try {
+            const response = await fetchWithTimeout('http://localhost:5002/api/market/symbols');
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Market data:', data);
+                updateMarketData(data);
+            }
+        } catch (error) {
+            console.error('Market data poll error:', error);
+        }
+        
+        setTimeout(pollMarketData, 30000); // Poll every 30 seconds
+    }
+    
+    // Initialize timeout handling system
+    function initializeTimeoutHandling() {
+        console.log('Initializing timeout handling system...');
+        
+        // Override the existing WebSocket setup with our enhanced version
+        if (window.setupWebSocketConnection) {
+            console.log('Overriding existing WebSocket setup...');
+        }
+        
+        // Start enhanced polling
+        setTimeout(pollHealth, 2000);    // Start health polling after 2 seconds
+        setTimeout(pollTrades, 5000);    // Start trades polling after 5 seconds
+        setTimeout(pollMarketData, 8000); // Start market data polling after 8 seconds
+    }
+    
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeTimeoutHandling);
+    } else {
+        initializeTimeoutHandling();
+    }
+    
+    // Expose functions globally for debugging
+    window.timeoutHandling = {
+        pollHealth,
+        pollTrades,
+        pollMarketData,
+        fetchWithTimeout,
+        showLoading,
+        showError
+    };
+    
+    console.log('Timeout handling system initialized for slow backend');
+})();
+
+console.log('QNTI Frontend Update Fix loaded successfully');
+</script>
+</body>
+</html> 

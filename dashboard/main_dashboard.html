@@ -1,0 +1,1991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QNTI Dashboard - Overview</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        .dashboard-header {
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid #334155;
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: #94a3b8;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-link:hover {
+            background: rgba(100, 116, 139, 0.2);
+            color: #f1f5f9;
+        }
+
+        .nav-link.active {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+
+        .status-indicators {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-connected { background: #10b981; }
+        .status-warning { background: #f59e0b; }
+        .status-error { background: #ef4444; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .main-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .dashboard-card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #475569;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .metric-item {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 8px;
+            border: 1px solid #475569;
+        }
+
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+        .neutral { color: #64748b; }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-secondary { background: #64748b; color: white; }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 250px;
+            margin-top: 1rem;
+        }
+
+        .ai-insight-box {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid #8b5cf6;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .ai-insight-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            color: #8b5cf6;
+            font-weight: 600;
+        }
+
+        .ai-insight-content {
+            color: #e2e8f0;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .vision-upload-area {
+            border: 2px dashed #475569;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 1rem;
+        }
+
+        .vision-upload-area:hover {
+            border-color: #8b5cf6;
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .emergency-controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #475569;
+        }
+
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                padding: 1rem;
+            }
+            
+            .nav-menu {
+                display: none;
+            }
+        }
+
+        .ea-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .ea-status-card {
+            background: rgba(51, 65, 85, 0.3);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .ea-status-card:hover {
+            background: rgba(51, 65, 85, 0.5);
+            border-color: #475569;
+        }
+
+        .ea-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .ea-name {
+            font-weight: 600;
+            color: #f1f5f9;
+            font-size: 0.9rem;
+        }
+
+        .ea-status {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid #10b981;
+        }
+
+        .status-inactive {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid #ef4444;
+        }
+
+        .ea-metrics {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .ea-metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .ea-metric .metric-label {
+            color: #94a3b8;
+            font-size: 0.8rem;
+        }
+
+        .ea-metric .metric-value {
+            color: #f1f5f9;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .profit-positive {
+            color: #10b981 !important;
+        }
+
+        .profit-negative {
+            color: #ef4444 !important;
+        }
+
+        .trade-type-buy {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .trade-type-sell {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+                .metric-value.positive {
+            color: #10b981;
+        }
+        
+        .metric-value.negative {
+            color: #ef4444;
+        }
+        
+        .metric-value.unknown {
+            color: #6b7280;
+        }
+
+        .metric-value.neutral {
+            color: #94a3b8;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #475569;
+        }
+
+        .data-table th {
+            background: rgba(51, 65, 85, 0.8);
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .data-table td {
+            color: #e2e8f0;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+        }
+
+        /* ADD ONLY THESE LINES TO YOUR EXISTING CSS */
+        .results-panel {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 0;
+            margin-top: 1.5rem;
+            overflow: hidden;
+            display: none;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .results-panel.show { display: block; animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .results-header { background: rgba(59, 130, 246, 0.1); border-bottom: 1px solid #334155; padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+        .results-title { font-size: 1.3rem; font-weight: 600; color: #f1f5f9; display: flex; align-items: center; gap: 0.5rem; }
+        .results-content { padding: 1.5rem; }
+        .results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .result-item { background: rgba(51, 65, 85, 0.5); padding: 1rem; border-radius: 8px; border-left: 3px solid #3b82f6; }
+        .result-item.signal-buy { border-left-color: #10b981; } .result-item.signal-sell { border-left-color: #ef4444; }
+        .result-label { color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .result-value { color: #f1f5f9; font-size: 1.1rem; font-weight: 600; }
+        .signal-buy .result-value { color: #10b981; } .signal-sell .result-value { color: #ef4444; }
+        
+        .confidence-badge { 
+            padding: 0.5rem 1rem; 
+            border-radius: 20px; 
+            font-size: 0.9rem; 
+            font-weight: 600; 
+        }
+        .confidence-high { 
+            background: rgba(16, 185, 129, 0.2); 
+            color: #10b981; 
+            border: 1px solid #10b981; 
+        }
+        .confidence-medium { 
+            background: rgba(245, 158, 11, 0.2); 
+            color: #f59e0b; 
+            border: 1px solid #f59e0b; 
+        }
+        .confidence-low { 
+            background: rgba(239, 68, 68, 0.2); 
+            color: #ef4444; 
+            border: 1px solid #ef4444; 
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <div class="header-content">
+            <div class="logo">Quantum Nexus Trading Intelligence</div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-link active">📊 Overview</a>
+                <a href="trading_center.html" class="nav-link">📈 Trading</a>
+                <a href="ea_management.html" class="nav-link">🤖 EA Manager</a>
+                <a href="import_ea.html" class="nav-link">🧠 Import EA</a>
+                <a href="analytics_reports.html" class="nav-link">📊 Analytics</a>
+            </nav>
+            <div class="status-indicators">
+                <div class="status-item">
+                    <span>MT5:</span>
+                    <div class="status-dot status-error" id="mt5-status"></div>
+                </div>
+                <div class="status-item">
+                    <span>AI:</span>
+                    <div class="status-dot status-connected" id="ai-status"></div>
+                </div>
+                <div style="margin-left: 1rem; font-size: 0.9rem; color: #94a3b8;">
+                    <span id="last-update">--:--:--</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Indicator & Error Message for Redis Cache Integration -->
+    <div id="loading-indicator" style="display: none; position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: rgba(59, 130, 246, 0.9); color: white; padding: 1rem 2rem; border-radius: 8px; z-index: 1000; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+        Loading...
+    </div>
+    
+    <div id="error-message" style="display: none; position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: rgba(239, 68, 68, 0.9); color: white; padding: 1rem 2rem; border-radius: 8px; z-index: 1000; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+        Error message
+    </div>
+
+    <div class="main-container">
+        <!-- Account Overview -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">Account Overview</h3>
+                <button class="btn btn-primary" onclick="updateDashboard(); console.log('Manual refresh triggered!')">Refresh</button>
+            </div>
+            <div class="metric-grid">
+                <div class="metric-item">
+                    <div class="metric-value" id="account-balance">$0.00</div>
+                    <div class="metric-label">Account Balance</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="account-equity">$0.00</div>
+                    <div class="metric-label">Account Equity</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="daily-pnl">$0.00</div>
+                    <div class="metric-label">Daily P&L</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="total-trades">0</div>
+                    <div class="metric-label">Total Trades</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="open-trades">0</div>
+                    <div class="metric-label">Open Trades</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="win-rate">0.0%</div>
+                    <div class="metric-label">Win Rate</div>
+                </div>
+            </div>
+            <div class="ai-insight-box">
+                <div class="ai-insight-header">
+                    <span>🤖</span>
+                    <span>AI Account Analysis</span>
+                </div>
+                <div class="ai-insight-content" id="account-ai-insight">
+                    Account health is stable. No margin concerns detected. Consider diversifying positions across multiple pairs.
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">Trading Statistics</h3>
+            </div>
+            <div class="metric-grid">
+                <div class="metric-item">
+                    <div class="metric-value neutral" id="active-eas">0</div>
+                    <div class="metric-label">Active EAs</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value neutral" id="profit-factor">0.00</div>
+                    <div class="metric-label">Profit Factor</div>
+                </div>
+            </div>
+            <div class="emergency-controls">
+                <button class="btn btn-danger" onclick="emergencyCloseAll()">🚨 Emergency Close</button>
+                <button class="btn btn-warning" onclick="pauseAllEAs()">⏸️ Pause All EAs</button>
+            </div>
+        </div>
+
+        <!-- AI Vision Analysis -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">🧠 AI Vision Analysis</h3>
+                <button class="btn btn-primary" onclick="openVisionModal()">📸 Analyze Chart</button>
+            </div>
+            
+            <!-- Enhanced Upload Area -->
+            <div class="vision-upload-area" onclick="document.getElementById('chart-image-upload').click()">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📊</div>
+                <div style="color: #94a3b8;">Drop chart image here or click to upload</div>
+                <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.5rem;">Supports JPG, PNG, WebP</div>
+                <input type="file" id="chart-image-upload" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+            </div>
+            
+            <!-- Analysis Form (shown after upload) -->
+            <div id="analysis-form" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(51, 65, 85, 0.3); border-radius: 8px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Symbol</label>
+                        <input type="text" id="symbol-select" placeholder="EURUSD" value="EURUSD" style="width: 100%; padding: 0.5rem; border: 1px solid #475569; border-radius: 4px; background: #334155; color: #f1f5f9;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Timeframe</label>
+                        <select id="timeframe-select" style="width: 100%; padding: 0.5rem; border: 1px solid #475569; border-radius: 4px; background: #334155; color: #f1f5f9;">
+                            <option value="M5">M5</option>
+                            <option value="M15">M15</option>
+                            <option value="H1">H1</option>
+                            <option value="H4" selected>H4</option>
+                            <option value="D1">D1</option>
+                        </select>
+                    </div>
+                </div>
+                <button id="analyze-btn" class="btn btn-primary" style="width: 100%;" onclick="analyzeChart()">
+                    <span class="btn-icon">🧠</span>
+                    <span class="btn-text">Analyze Chart</span>
+                </button>
+            </div>
+            
+            <!-- Upload Status -->
+            <div id="upload-status" style="margin-top: 1rem; display: none;"></div>
+            
+            <!-- Results Panel -->
+            <div id="results-panel" class="results-panel"></div>
+            
+            <div id="recent-vision-analysis" style="margin-top: 1rem;">
+                <!-- Recent analysis will appear here -->
+            </div>
+        </div>
+
+        <!-- Equity Curve -->
+        <div class="dashboard-card" style="grid-column: span 2;">
+            <div class="card-header">
+                <h3 class="card-title">Equity Curve</h3>
+                <select id="equity-timeframe" onchange="updateEquityChart()">
+                    <option value="1D">Today</option>
+                    <option value="1W">1 Week</option>
+                    <option value="1M" selected>1 Month</option>
+                    <option value="3M">3 Months</option>
+                </select>
+            </div>
+            <div class="chart-container">
+                <canvas id="equity-chart"></canvas>
+            </div>
+            <div class="ai-insight-box">
+                <div class="ai-insight-header">
+                    <span>🤖</span>
+                    <span>AI Performance Analysis</span>
+                </div>
+                <div class="ai-insight-content" id="performance-ai-insight">
+                    Equity curve shows steady growth with controlled drawdowns. Current trend is positive with low volatility.
+                </div>
+            </div>
+        </div>
+
+        <!-- System Health -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">System Health</h3>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: rgba(51, 65, 85, 0.3); border-radius: 6px;">
+                    <span>MT5 Connection</span>
+                    <div class="status-dot status-error"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: rgba(51, 65, 85, 0.3); border-radius: 6px;">
+                    <span>Vision AI</span>
+                    <div class="status-dot status-connected"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: rgba(51, 65, 85, 0.3); border-radius: 6px;">
+                    <span>EA System</span>
+                    <div class="status-dot status-warning"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: rgba(51, 65, 85, 0.3); border-radius: 6px;">
+                    <span>Server Status</span>
+                    <div class="status-dot status-connected"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">EA Status</h3>
+                <button class="btn-secondary">Manage EAs</button>
+            </div>
+            <div id="ea-status-container" class="ea-grid">
+                <!-- EA status cards will be populated here -->
+            </div>
+        </div>
+
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">Recent Trades</h3>
+                <button class="btn-secondary">View All</button>
+            </div>
+            <div class="table-container">
+                <table id="trades-table" class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Type</th>
+                            <th>Volume</th>
+                            <th>Entry Price</th>
+                            <th>Current Price</th>
+                            <th>P&L</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Trade rows will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- External Market Data -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">📊 External Market Data</h3>
+                <button class="btn btn-primary" onclick="refreshExternalData()">Refresh</button>
+            </div>
+            <div id="external-market-data" class="metric-grid">
+                <!-- External market data will be populated here -->
+            </div>
+            <div class="ai-insight-box">
+                <div class="ai-insight-header">
+                    <span>📈</span>
+                    <span>Multi-Source Data Summary</span>
+                </div>
+                <div class="ai-insight-content" id="market-data-insight">
+                    Loading market data from multiple providers...
+                </div>
+            </div>
+        </div>
+
+        <!-- News & Social Sentiment -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">📰 News & Social Sentiment</h3>
+                <button class="btn btn-primary" onclick="refreshNewsData()">Refresh</button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div class="metric-item">
+                    <div class="metric-value" id="news-count">0</div>
+                    <div class="metric-label">News Items</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="sentiment-score">0.0</div>
+                    <div class="metric-label">Sentiment Score</div>
+                </div>
+            </div>
+            <div id="news-container" style="max-height: 300px; overflow-y: auto;">
+                <!-- News items will be populated here -->
+            </div>
+        </div>
+
+        <!-- API Services Status -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">🔗 API Services Status</h3>
+                <button class="btn btn-primary" onclick="refreshAPIStatus()">Check Status</button>
+            </div>
+            <div id="api-services-status" class="ea-grid">
+                <!-- API services status will be populated here -->
+            </div>
+        </div>
+
+        <!-- OpenAI Vision Analysis -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">🧠 OpenAI Vision Analysis</h3>
+                <button class="btn btn-primary" onclick="testVisionConnection()">Test Connection</button>
+            </div>
+            <div class="metric-grid">
+                <div class="metric-item">
+                    <div class="metric-value" id="vision-status">Unknown</div>
+                    <div class="metric-label">Service Status</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="vision-cache-size">0</div>
+                    <div class="metric-label">Cached Analyses</div>
+                </div>
+            </div>
+            <div id="vision-test-result" style="margin-top: 1rem; display: none;"></div>
+            <div class="ai-insight-box">
+                <div class="ai-insight-header">
+                    <span>📸</span>
+                    <span>Vision Analysis Integration</span>
+                </div>
+                <div class="ai-insight-content" id="vision-integration-status">
+                    OpenAI Vision is now integrated into the unified API system for centralized management and monitoring.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vision Analysis Modal -->
+    <div id="vision-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1e293b; padding: 2rem; border-radius: 12px; border: 1px solid #334155; width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 style="color: #f1f5f9; margin: 0;">🧠 AI Chart Analysis</h3>
+                <button onclick="closeVisionModal()" style="background: none; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer;">×</button>
+            </div>
+            <div id="vision-modal-content">
+                <!-- Modal content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables for AI Vision Analysis
+        let currentAnalysisId = null;
+        
+        // Helper functions for AI Vision Analysis
+        function updateVisionStatus(message, statusClass) {
+            console.log('Vision Status:', message, statusClass);
+            // Update status indicators if they exist
+        }
+        
+        // Initialize Chart
+        const ctx = document.getElementById('equity-chart').getContext('2d');
+        const equityChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array.from({length: 30}, (_, i) => `Day ${i + 1}`),
+                datasets: [{
+                    label: 'Equity',
+                    data: Array.from({length: 30}, () => 10000 + Math.random() * 2000 - 500),
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        grid: { color: 'rgba(100, 116, 139, 0.2)' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    x: {
+                        grid: { color: 'rgba(100, 116, 139, 0.2)' },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+
+        // Update functions
+        function refreshData() {
+            console.log('Refreshing dashboard data...');
+            updateTimestamp();
+        }
+
+        function updateTimestamp() {
+            document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+        }
+
+        function emergencyCloseAll() {
+            if (confirm('Are you sure you want to close ALL positions? This action cannot be undone!')) {
+                console.log('Emergency close all positions');
+            }
+        }
+
+        function pauseAllEAs() {
+            if (confirm('Pause all Expert Advisors?')) {
+                console.log('Pausing all EAs');
+            }
+        }
+
+        function openVisionModal() {
+            document.getElementById('vision-modal').style.display = 'block';
+            loadVisionModalContent();
+        }
+
+        function closeVisionModal() {
+            document.getElementById('vision-modal').style.display = 'none';
+        }
+
+        function loadVisionModalContent() {
+            document.getElementById('vision-modal-content').innerHTML = `
+                <div class="vision-upload-area" onclick="document.getElementById('modal-upload').click()" style="margin-bottom: 1.5rem;">
+                    <div style="font-size: 3rem; margin-bottom: 0.5rem;">📸</div>
+                    <div style="color: #f1f5f9; font-size: 1.1rem; margin-bottom: 0.5rem;">Upload Chart for AI Analysis</div>
+                    <div style="color: #94a3b8;">Click to browse or drag & drop</div>
+                    <input type="file" id="modal-upload" accept="image/*" style="display: none;" onchange="handleModalUpload(event)">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Symbol</label>
+                        <input type="text" placeholder="EURUSD" style="width: 100%; padding: 0.5rem; border: 1px solid #475569; border-radius: 4px; background: #334155; color: #f1f5f9;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Timeframe</label>
+                        <select style="width: 100%; padding: 0.5rem; border: 1px solid #475569; border-radius: 4px; background: #334155; color: #f1f5f9;">
+                            <option>M5</option>
+                            <option>M15</option>
+                            <option>H1</option>
+                            <option selected>H4</option>
+                            <option>D1</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-primary" style="width: 100%;" onclick="analyzeChart()">🔍 Analyze Chart</button>
+            `;
+        }
+
+        // Handle image upload and get analysis ID
+        async function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            console.log('📸 Uploading chart image:', file.name);
+            
+            // Show upload status
+            const uploadStatus = document.getElementById('upload-status');
+            uploadStatus.style.display = 'block';
+            uploadStatus.innerHTML = `
+                <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 1rem; color: #3b82f6;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <div style="animation: spin 1s linear infinite;">🔄</div>
+                        <span>Uploading ${file.name}...</span>
+                    </div>
+                </div>
+            `;
+            
+            try {
+                // Upload the image
+                const formData = new FormData();
+                formData.append('image', file);
+                
+                const uploadResponse = await fetch('/api/vision/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!uploadResponse.ok) {
+                    throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+                }
+                
+                const uploadResult = await uploadResponse.json();
+                console.log('✅ Upload successful:', uploadResult);
+                
+                // Store the analysis ID
+                currentAnalysisId = uploadResult.analysis_id;
+                
+                // Show success and analysis form
+                uploadStatus.innerHTML = `
+                    <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 1rem; color: #10b981;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span>✅</span>
+                            <span>Image uploaded successfully! Ready for analysis.</span>
+                        </div>
+                    </div>
+                `;
+                
+                // Show the analysis form
+                document.getElementById('analysis-form').style.display = 'block';
+                
+            } catch (error) {
+                console.error('❌ Upload error:', error);
+                uploadStatus.innerHTML = `
+                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 1rem; color: #ef4444;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span>❌</span>
+                            <span>Upload failed: ${error.message}</span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function handleModalUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                console.log('Modal upload:', file.name);
+                handleImageUpload(event);
+            }
+        }
+
+        // Enhanced analyzeChart function with proper error handling
+        async function analyzeChart() {
+            if (!currentAnalysisId) {
+                alert('Please upload a chart image first!');
+                return;
+            }
+            
+            const symbolSelect = document.getElementById('symbol-select');
+            const timeframeSelect = document.getElementById('timeframe-select');
+            const analyzeBtn = document.getElementById('analyze-btn');
+            
+            if (!symbolSelect || !timeframeSelect || !analyzeBtn) {
+                console.error('Required form elements not found');
+                return;
+            }
+            
+            const symbol = symbolSelect.value.trim();
+            const timeframe = timeframeSelect.value;
+            
+            if (!symbol || !timeframe) {
+                alert('Please enter a symbol and select a timeframe!');
+                return;
+            }
+            
+            console.log('🧠 Starting AI analysis for:', currentAnalysisId, symbol, timeframe);
+            
+            // Show loading in results panel
+            const resultsPanel = document.getElementById('results-panel');
+            resultsPanel.innerHTML = `
+                <div class="results-header">
+                    <div class="results-title">🧠 AI Analysis in Progress</div>
+                </div>
+                <div style="text-align: center; padding: 3rem; color: #94a3b8;">
+                    <div style="font-size: 2rem; margin-bottom: 1rem; animation: spin 1s linear infinite;">🔄</div>
+                    <div>Analyzing chart with OpenAI Vision...</div>
+                    <div style="font-size: 0.9rem; margin-top: 1rem;">This may take 10-30 seconds...</div>
+                </div>
+            `;
+            resultsPanel.style.display = 'block';
+            resultsPanel.classList.add('show');
+            
+            // Update button state
+            const originalText = analyzeBtn.innerHTML;
+            analyzeBtn.innerHTML = '<span class="btn-icon">🔄</span><span class="btn-text">Analyzing...</span>';
+            analyzeBtn.disabled = true;
+            updateVisionStatus('AI analyzing chart...', 'status-warning');
+            
+            try {
+                const analysisResponse = await fetch(`/api/vision/analyze/${currentAnalysisId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        symbol: symbol, 
+                        timeframe: timeframe 
+                    })
+                });
+                
+                if (!analysisResponse.ok) {
+                    const errorText = await analysisResponse.text();
+                    throw new Error(`Analysis failed (${analysisResponse.status}): ${errorText}`);
+                }
+                
+                const analysisResult = await analysisResponse.json();
+                console.log('🎯 AI Analysis completed:', analysisResult);
+                
+                // Display results
+                if (analysisResult.analysis && analysisResult.analysis.confidence !== null) {
+                    displayAnalysisResults(analysisResult.analysis, symbol, timeframe);
+                    updateVisionStatus('Analysis complete', 'status-connected');
+                } else {
+                    throw new Error('No analysis data received or invalid response structure');
+                }
+                
+            } catch (error) {
+                console.error('❌ Analysis error:', error);
+                resultsPanel.innerHTML = `
+                    <div class="results-header"><div class="results-title">❌ Analysis Failed</div></div>
+                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 1.5rem; margin: 1.5rem; color: #ef4444; text-align: center;">
+                        <div style="font-size: 1.1rem; margin-bottom: 0.5rem;">Unable to analyze chart</div>
+                        <div style="font-size: 0.9rem;">${error.message}</div>
+                        <div style="font-size: 0.8rem; margin-top: 0.5rem; color: #94a3b8;">
+                            Check console for detailed error information
+                        </div>
+                    </div>
+                `;
+                updateVisionStatus('Analysis failed', 'status-error');
+            } finally {
+                // Always restore button state
+                analyzeBtn.innerHTML = originalText;
+                analyzeBtn.disabled = false;
+            }
+        }
+
+        // REPLACE your existing displayAnalysisResults function with this enhanced version
+        function displayAnalysisResults(analysis, symbol, timeframe) {
+            const confidence = Math.round((analysis.confidence || 0) * 100);
+            const confidenceClass = confidence >= 80 ? 'confidence-high' : confidence >= 60 ? 'confidence-medium' : 'confidence-low';
+            
+            const primaryScenario = analysis.primary_scenario || {};
+            const signal = primaryScenario.trade_type || 'NEUTRAL';
+            const signalClass = signal === 'BUY' ? 'signal-buy' : signal === 'SELL' ? 'signal-sell' : '';
+            const signalIcon = signal === 'BUY' ? '📈' : signal === 'SELL' ? '📉' : '➡️';
+            
+            const trend = analysis.overall_trend || 'Neutral';
+            const entryPrice = primaryScenario.entry_price || 'Market';
+            const stopLoss = primaryScenario.stop_loss || 'N/A';
+            const takeProfit = primaryScenario.take_profit_1 || primaryScenario.take_profit || 'N/A';
+            const probability = Math.round((primaryScenario.probability_success || 0) * 100);
+
+            const resultsPanel = document.getElementById('results-panel');
+            resultsPanel.innerHTML = `
+                <div class="results-header">
+                    <div class="results-title">${signalIcon} ${symbol} Analysis Results</div>
+                    <div class="confidence-badge ${confidenceClass}">${confidence}% Confidence</div>
+                </div>
+                
+                <div class="results-content">
+                    <div class="results-grid">
+                        <div class="result-item ${signalClass}">
+                            <div class="result-label">Trading Signal</div>
+                            <div class="result-value">${signal}</div>
+                        </div>
+                        
+                        <div class="result-item">
+                            <div class="result-label">Timeframe</div>
+                            <div class="result-value">${timeframe}</div>
+                        </div>
+                        
+                        <div class="result-item">
+                            <div class="result-label">Overall Trend</div>
+                            <div class="result-value">${trend}</div>
+                        </div>
+                        
+                        <div class="result-item">
+                            <div class="result-label">Success Probability</div>
+                            <div class="result-value">${probability}%</div>
+                        </div>
+                        
+                        ${entryPrice !== 'Market' ? `
+                        <div class="result-item">
+                            <div class="result-label">Entry Price</div>
+                            <div class="result-value">${entryPrice}</div>
+                        </div>` : ''}
+                        
+                        ${stopLoss !== 'N/A' ? `
+                        <div class="result-item">
+                            <div class="result-label">Stop Loss</div>
+                            <div class="result-value">${stopLoss}</div>
+                        </div>` : ''}
+                        
+                        ${takeProfit !== 'N/A' ? `
+                        <div class="result-item">
+                            <div class="result-label">Take Profit</div>
+                            <div class="result-value">${takeProfit}</div>
+                        </div>` : ''}
+                    </div>
+                    
+                    ${analysis.market_bias ? `
+                    <div class="ai-insight-box">
+                        <div class="ai-insight-header"><span>💡</span><span>Market Insight</span></div>
+                        <div class="ai-insight-content">${analysis.market_bias}</div>
+                    </div>` : ''}
+                </div>
+            `;
+            
+            resultsPanel.classList.add('show');
+            resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function displayQuickAnalysis() {
+            document.getElementById('recent-vision-analysis').innerHTML = `
+                <div style="background: rgba(51, 65, 85, 0.3); padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <span style="font-weight: 600;">EURUSD - H4</span>
+                        <span style="color: #10b981; font-size: 0.9rem;">85% Confidence</span>
+                    </div>
+                    <div style="color: #94a3b8; font-size: 0.9rem;">
+                        <div>📈 Signal: <span style="color: #10b981;">BUY</span></div>
+                        <div>🎯 Entry: 1.0850</div>
+                        <div>🛡️ Stop Loss: 1.0820</div>
+                        <div>💰 Take Profit: 1.0910</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateEquityChart() {
+            const timeframe = document.getElementById('equity-timeframe').value;
+            console.log('🔄 Updating equity chart for timeframe:', timeframe);
+            
+            // Fetch equity history for the selected timeframe
+            fetch(`/api/trades/history?timeframe=${timeframe}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('📊 Equity history received for', timeframe, ':', data);
+                    updateEquityChartData(data.history || []);
+                })
+                .catch(error => console.error('❌ Error fetching equity history:', error));
+        }
+
+        // FIXED: Update equity chart with better error handling
+        function updateEquityChartData(history) {
+            console.log('📊 Updating equity chart with', history.length, 'data points');
+            
+            if (!window.equityChart) {
+                console.log('⚠️ Chart not initialized, skipping chart update');
+                return;
+            }
+            
+            if (history.length === 0) {
+                console.log('⚠️ No equity history data available');
+                return;
+            }
+            
+            try {
+                const labels = history.map(point => {
+                    const date = new Date(point.timestamp);
+                    return date.toLocaleDateString();
+                });
+                
+                const data = history.map(point => point.equity || point.running_balance || 0);
+                
+                window.equityChart.data.labels = labels;
+                window.equityChart.data.datasets[0].data = data;
+                window.equityChart.update();
+                
+                console.log('✅ Equity chart updated with', data.length, 'points');
+            } catch (error) {
+                console.error('❌ Error updating equity chart:', error);
+            }
+        }
+
+        // === REDIS CACHE INTEGRATION & TIMEOUT HANDLING ===
+        // Configuration for timeout handling and retry logic
+        const API_TIMEOUT = 60000; // 60 seconds timeout for slow backend responses
+        const RETRY_DELAY = 5000;   // 5 seconds between retries
+        const MAX_RETRIES = 3;      // Maximum number of retry attempts
+        
+        // Global state management
+        let isUpdating = false;
+        let retryCount = 0;
+        let lastUpdateTime = 0;
+        
+        // Enhanced fetch with timeout and retry logic
+        async function fetchWithTimeout(url, options = {}) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+            
+            try {
+                showLoading(`Fetching ${url}...`);
+                const response = await fetch(url, { 
+                    ...options, 
+                    signal: controller.signal 
+                });
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                hideLoading();
+                return response;
+            } catch (error) {
+                clearTimeout(timeoutId);
+                hideLoading();
+                
+                if (error.name === 'AbortError') {
+                    showError(`Request to ${url} timed out after ${API_TIMEOUT/1000}s`);
+                    throw new Error(`Timeout: ${url}`);
+                }
+                throw error;
+            }
+        }
+        
+        // Enhanced loading indicator
+        function showLoading(message) {
+            const indicator = document.getElementById('loading-indicator');
+            if (indicator) {
+                indicator.style.display = 'block';
+                indicator.textContent = message || 'Loading...';
+            }
+            console.log('⏳', message);
+        }
+        
+        function hideLoading() {
+            const indicator = document.getElementById('loading-indicator');
+            if (indicator) {
+                indicator.style.display = 'none';
+            }
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            if (errorDiv) {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                }, 10000);
+            }
+            console.error('❌', message);
+        }
+        
+        // Real-time data updates with timeout handling and Redis cache optimization
+        async function updateDashboard() {
+            if (isUpdating) {
+                console.log('⏳ Dashboard update already in progress, skipping...');
+                return;
+            }
+            
+            isUpdating = true;
+            const startTime = Date.now();
+            console.log('🔄 Starting dashboard update with Redis cache optimization...');
+            
+            try {
+                // Fetch system health with timeout handling
+                await fetchHealthData();
+                
+                // Fetch EA status with timeout handling
+                await fetchEAData();
+                
+                // Fetch trades with timeout handling
+                await fetchTradesData();
+                
+                // Fetch equity history with timeout handling
+                await fetchEquityHistory();
+                
+                // Fetch AI insights with timeout handling
+                await fetchAIInsights();
+                
+                // Update performance metrics
+                const duration = Date.now() - startTime;
+                lastUpdateTime = Date.now();
+                retryCount = 0; // Reset retry count on successful update
+                
+                console.log(`✅ Dashboard update completed in ${duration}ms`);
+                
+            } catch (error) {
+                console.error('❌ Dashboard update failed:', error);
+                
+                // Implement retry logic
+                if (retryCount < MAX_RETRIES) {
+                    retryCount++;
+                    console.log(`🔄 Retrying dashboard update (${retryCount}/${MAX_RETRIES}) in ${RETRY_DELAY}ms...`);
+                    showError(`Update failed. Retrying in ${RETRY_DELAY/1000}s... (${retryCount}/${MAX_RETRIES})`);
+                    setTimeout(() => updateDashboard(), RETRY_DELAY);
+                } else {
+                    showError('Dashboard update failed after multiple attempts. Please refresh the page.');
+                    retryCount = 0; // Reset for next attempt
+                }
+            } finally {
+                isUpdating = false;
+            }
+        }
+        
+        // Health data fetching with Redis cache optimization
+        async function fetchHealthData() {
+            try {
+                const response = await fetchWithTimeout('/api/health');
+                const data = await response.json();
+                
+                console.log('📊 Health data received:', data);
+                console.log('💰 Account Balance:', data.account_balance);
+                console.log('💎 Account Equity:', data.account_equity);
+                
+                // Log Redis cache performance
+                if (data.cache_performance) {
+                    console.log('🚀 Redis Cache Performance:', data.cache_performance);
+                }
+                
+                const balanceElement = document.getElementById('account-balance');
+                const equityElement = document.getElementById('account-equity');
+                const dailyPnlElement = document.getElementById('daily-pnl');
+                const totalTradesElement = document.getElementById('total-trades');
+                const openTradesElement = document.getElementById('open-trades');
+                const winRateElement = document.getElementById('win-rate');
+                
+                if (balanceElement) {
+                    const balance = data.account_balance || 0;
+                    balanceElement.textContent = `$${balance.toFixed(2)}`;
+                    console.log('📝 Setting balance to:', balance);
+                }
+                
+                if (equityElement) {
+                    const equity = data.account_equity || 0;
+                    equityElement.textContent = `$${equity.toFixed(2)}`;
+                    console.log('📝 Setting equity to:', equity);
+                }
+                
+                if (dailyPnlElement) {
+                    const pnl = data.daily_pnl || 0;
+                    dailyPnlElement.textContent = `$${pnl.toFixed(2)}`;
+                    dailyPnlElement.className = `metric-value ${pnl >= 0 ? 'positive' : 'negative'}`;
+                    console.log('📝 Setting daily P&L to:', pnl);
+                }
+                
+                if (totalTradesElement) {
+                    const totalTrades = data.total_trades || 0;
+                    totalTradesElement.textContent = totalTrades.toString();
+                    console.log('📝 Setting total trades to:', totalTrades);
+                }
+                
+                if (openTradesElement) {
+                    const openTrades = data.open_trades || 0;
+                    openTradesElement.textContent = openTrades.toString();
+                    console.log('📝 Setting open trades to:', openTrades);
+                }
+                
+                if (winRateElement) {
+                    const winRate = data.win_rate || 0;
+                    winRateElement.textContent = `${winRate.toFixed(1)}%`;
+                    console.log('📝 Setting win rate to:', winRate);
+                }
+                
+                // Update profit factor from backend health data
+                const profitFactorElement = document.getElementById('profit-factor');
+                if (profitFactorElement && data.profit_factor !== undefined) {
+                    profitFactorElement.textContent = data.profit_factor.toFixed(2);
+                    console.log('📝 Setting profit factor from health data to:', data.profit_factor);
+                }
+                
+            } catch (error) {
+                console.error('❌ Error fetching health data:', error);
+                showError('Failed to fetch health data');
+                throw error;
+            }
+        }
+        
+        // EA data fetching with Redis cache optimization
+        async function fetchEAData() {
+            try {
+                const response = await fetchWithTimeout('/api/eas');
+                const eas = await response.json();
+                
+                console.log('🤖 EA data received:', eas);
+                updateEAStatus(eas);
+                updateTradingStatistics(eas);
+                
+            } catch (error) {
+                console.error('❌ Error fetching EA data:', error);
+                showError('Failed to fetch EA data');
+                throw error;
+            }
+        }
+        
+        // Trades data fetching with Redis cache optimization
+        async function fetchTradesData() {
+            try {
+                const response = await fetchWithTimeout('/api/trades');
+                const trades = await response.json();
+                
+                console.log('📈 Trades data received:', trades);
+                updateTradesTable(trades);
+                
+            } catch (error) {
+                console.error('❌ Error fetching trades data:', error);
+                showError('Failed to fetch trades data');
+                throw error;
+            }
+        }
+        
+        // Equity history fetching with Redis cache optimization
+        async function fetchEquityHistory() {
+            try {
+                const timeframe = document.getElementById('equity-timeframe').value;
+                const response = await fetchWithTimeout(`/api/trades/history?timeframe=${timeframe}`);
+                const data = await response.json();
+                
+                console.log('📊 Equity history received for', timeframe, ':', data);
+                updateEquityChartData(data.history || []);
+                
+            } catch (error) {
+                console.error('❌ Error fetching equity history:', error);
+                showError('Failed to fetch equity history');
+                throw error;
+            }
+        }
+        
+        // AI insights fetching with Redis cache optimization
+        async function fetchAIInsights() {
+            try {
+                const response = await fetchWithTimeout('/api/ai/insights/all');
+                const data = await response.json();
+                
+                console.log('🤖 AI insights received:', data);
+                updateAIInsights(data);
+                
+            } catch (error) {
+                console.log('⚠️ AI insights not available:', error);
+                // Set fallback insights
+                updateAIInsights({
+                    success: false,
+                    insights: {
+                        market: 'Market monitoring active',
+                        account: 'Account monitoring active',
+                        performance: 'Performance tracking active'
+                    }
+                });
+            }
+        }
+
+        // Update AI insights in dashboard panels
+        function updateAIInsights(aiData) {
+            console.log('🤖 Updating AI insights...', aiData);
+            
+            try {
+                const insights = aiData.insights || {};
+                
+                // Update market insight (first ai-insight-content found)
+                const marketInsightElement = document.querySelector('.ai-insight-content');
+                if (marketInsightElement && insights.market) {
+                    marketInsightElement.textContent = insights.market;
+                    console.log('📝 Updated market insight');
+                }
+                
+                // Update account analysis
+                const accountInsightElement = document.getElementById('account-ai-insight');
+                if (accountInsightElement && insights.account) {
+                    accountInsightElement.textContent = insights.account;
+                    console.log('📝 Updated account insight');
+                }
+                
+                // Update performance analysis
+                const performanceInsightElement = document.getElementById('performance-ai-insight');
+                if (performanceInsightElement && insights.performance) {
+                    performanceInsightElement.textContent = insights.performance;
+                    console.log('📝 Updated performance insight');
+                }
+                
+                console.log('✅ AI insights update complete');
+            } catch (error) {
+                console.error('❌ Error updating AI insights:', error);
+            }
+        }
+
+        // Update trading statistics
+        function updateTradingStatistics(eas) {
+            console.log('📊 Updating trading statistics...');
+            
+            const activeEAsElement = document.getElementById('active-eas');
+            const profitFactorElement = document.getElementById('profit-factor');
+            
+            if (activeEAsElement) {
+                const activeEAs = eas.filter(ea => ea.status === 'active').length;
+                activeEAsElement.textContent = activeEAs.toString();
+                console.log('📝 Setting active EAs to:', activeEAs);
+            }
+            
+            if (profitFactorElement) {
+                // Calculate profit factor from EAs using correct field names
+                const totalProfit = eas.reduce((sum, ea) => sum + (ea.total_profit || 0), 0);
+                const totalLoss = eas.reduce((sum, ea) => sum + (ea.total_loss || 0), 0);
+                const profitFactor = totalLoss > 0 ? (totalProfit / totalLoss) : 0;
+                profitFactorElement.textContent = profitFactor.toFixed(2);
+                console.log('📝 Setting profit factor to:', profitFactor, 'from', totalProfit, '/', totalLoss);
+            }
+        }
+
+        // Update EA status cards
+        function updateEAStatus(eas) {
+            console.log('🤖 Updating EA status with', eas.length, 'EAs');
+            
+            const container = document.getElementById('ea-status-container');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            eas.slice(0, 6).forEach(ea => {
+                const card = document.createElement('div');
+                card.className = 'ea-status-card';
+                
+                const statusClass = ea.status === 'active' ? 'status-active' : 'status-inactive';
+                const profitClass = (ea.profit || 0) >= 0 ? 'profit-positive' : 'profit-negative';
+                
+                card.innerHTML = `
+                    <div class="ea-header">
+                        <span class="ea-name">${ea.name || 'Unknown EA'}</span>
+                        <span class="ea-status ${statusClass}">${ea.status || 'inactive'}</span>
+                    </div>
+                    <div class="ea-metrics">
+                        <div class="ea-metric">
+                            <span class="metric-label">Trades</span>
+                            <span class="metric-value">${ea.total_trades || 0}</span>
+                        </div>
+                        <div class="ea-metric">
+                            <span class="metric-label">Win Rate</span>
+                            <span class="metric-value">${(ea.win_rate || 0).toFixed(1)}%</span>
+                        </div>
+                        <div class="ea-metric">
+                            <span class="metric-label">Profit</span>
+                            <span class="metric-value ${profitClass}">$${(ea.profit || 0).toFixed(2)}</span>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        // Update trades table
+        function updateTradesTable(trades) {
+            console.log('📈 Updating trades table with', trades.length, 'trades');
+            
+            const tbody = document.querySelector('#trades-table tbody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            trades.slice(0, 10).forEach(trade => {
+                const row = document.createElement('tr');
+                const profitClass = (trade.profit || 0) >= 0 ? 'profit-positive' : 'profit-negative';
+                
+                row.innerHTML = `
+                    <td>${trade.symbol || 'N/A'}</td>
+                    <td><span class="trade-type-${(trade.type || 'buy').toLowerCase()}">${trade.type || 'N/A'}</span></td>
+                    <td>${(trade.volume || 0).toFixed(2)}</td>
+                    <td>${(trade.open_price || 0).toFixed(5)}</td>
+                    <td>${(trade.current_price || 0).toFixed(5)}</td>
+                    <td class="${profitClass}">$${(trade.profit || 0).toFixed(2)}</td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // FIXED: Initialize with proper error handling
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🎯 DOM Content Loaded - Initializing dashboard...');
+            
+            try {
+                // Initialize charts first (with error handling)
+                initializeCharts();
+                console.log('✅ Charts initialization completed');
+            } catch (error) {
+                console.error('❌ Charts initialization failed:', error);
+                console.log('⚠️ Continuing without charts...');
+            }
+            
+            try {
+                // Initialize vision analysis
+                initializeVisionAnalysis();
+                console.log('✅ Vision analysis initialization completed');
+            } catch (error) {
+                console.error('❌ Vision analysis initialization failed:', error);
+            }
+            
+            // Load initial data immediately
+            console.log('📡 Loading initial data...');
+            try {
+                updateDashboard();
+                console.log('✅ Initial data load completed');
+            } catch (error) {
+                console.error('❌ Initial data load failed:', error);
+            }
+            
+            // Set up periodic updates every 10 seconds
+            console.log('⏰ Setting up periodic updates...');
+            setInterval(function() {
+                try {
+                    updateDashboard();
+                } catch (error) {
+                    console.error('❌ Periodic update failed:', error);
+                }
+            }, 10000);
+            
+            // Set up real-time updates via WebSocket
+            if (typeof io !== 'undefined') {
+                console.log('🔌 Setting up WebSocket connection...');
+                try {
+                    const socket = io();
+                    socket.on('trade_update', function(data) {
+                        console.log('📈 Trade update received via WebSocket');
+                        updateDashboard();
+                    });
+                    socket.on('ea_update', function(data) {
+                        console.log('🤖 EA update received via WebSocket');
+                        updateDashboard();
+                    });
+                } catch (error) {
+                    console.error('❌ WebSocket setup failed:', error);
+                }
+            } else {
+                console.log('⚠️ Socket.IO not available');
+            }
+            
+            // Add a global function for manual testing
+            window.forceUpdate = forceUpdate;
+            console.log('✅ Dashboard initialization complete');
+        });
+
+        // FIXED: Chart initialization with proper error handling
+        function initializeCharts() {
+            console.log('📊 Initializing charts...');
+            
+            try {
+                // Check if chart already exists and destroy it
+                if (window.equityChart) {
+                    window.equityChart.destroy();
+                    window.equityChart = null;
+                    console.log('🗑️ Destroyed existing chart');
+                }
+                
+                // Try to find existing Chart.js instance and destroy it
+                const existingChart = Chart.getChart('equity-chart');
+                if (existingChart) {
+                    existingChart.destroy();
+                    console.log('🗑️ Destroyed existing Chart.js instance');
+                }
+            } catch (e) {
+                console.log('ℹ️ No existing chart to destroy');
+            }
+            
+            // Initialize equity chart with the correct ID
+            const equityCtx = document.getElementById('equity-chart');
+            if (!equityCtx) {
+                console.error('❌ Equity chart canvas not found');
+                return;
+            }
+            
+            try {
+                window.equityChart = new Chart(equityCtx, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Account Equity',
+                            data: [],
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                grid: {
+                                    color: 'rgba(148, 163, 184, 0.1)'
+                                },
+                                ticks: {
+                                    color: '#94a3b8',
+                                    callback: function(value) {
+                                        return '$' + value.toFixed(2);
+                                    }
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    color: 'rgba(148, 163, 184, 0.1)'
+                                },
+                                ticks: {
+                                    color: '#94a3b8'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+                console.log('✅ Equity chart initialized successfully');
+            } catch (error) {
+                console.error('❌ Chart initialization error:', error);
+                console.log('⚠️ Continuing without chart - dashboard data will still work');
+                // Continue without chart - don't let this break the rest of the dashboard
+            }
+        }
+
+        // Vision analysis initialization
+        function initializeVisionAnalysis() {
+            console.log('🔍 Initializing vision analysis...');
+            // Vision analysis is already handled by the existing upload functions
+            console.log('✅ Vision analysis initialized');
+        }
+
+        // Force immediate data update (for testing)
+        function forceUpdate() {
+            console.log('🚀 Force update triggered!');
+            updateDashboard();
+        }
+
+        // External API Data Functions
+        async function loadExternalData() {
+            console.log('🔄 Loading external API data...');
+            
+            try {
+                // Load market data, news, and API status in parallel
+                await Promise.all([
+                    loadExternalMarketData(),
+                    loadNewsAndSentiment(),
+                    loadAPIStatus()
+                ]);
+                
+                console.log('✅ External API data loaded successfully');
+            } catch (error) {
+                console.error('❌ Error loading external API data:', error);
+            }
+        }
+
+        async function loadExternalMarketData() {
+            try {
+                const response = await fetch('/api/external/market-data?symbols=EURUSD&symbols=GBPUSD&symbols=USDJPY');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const container = document.getElementById('external-market-data');
+                    container.innerHTML = '';
+                    
+                    for (const [symbol, providers] of Object.entries(data.data)) {
+                        const avgPrice = providers.reduce((sum, p) => sum + p.price, 0) / providers.length;
+                        const avgChange = providers.reduce((sum, p) => sum + p.change_percent, 0) / providers.length;
+                        
+                        const changeClass = avgChange > 0 ? 'positive' : avgChange < 0 ? 'negative' : 'neutral';
+                        
+                        container.innerHTML += `
+                            <div class="metric-item">
+                                <div class="metric-value">${avgPrice.toFixed(5)}</div>
+                                <div class="metric-label">${symbol}</div>
+                                <div class="metric-value ${changeClass}" style="font-size: 0.8rem;">
+                                    ${avgChange >= 0 ? '+' : ''}${avgChange.toFixed(2)}%
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    // Update insight
+                    const insightEl = document.getElementById('market-data-insight');
+                    const totalProviders = Object.values(data.data).reduce((sum, providers) => sum + providers.length, 0);
+                    insightEl.textContent = `Data aggregated from ${totalProviders} provider sources. Real-time multi-source price feeds active.`;
+                }
+            } catch (error) {
+                console.error('Error loading external market data:', error);
+                document.getElementById('market-data-insight').textContent = 'Error loading external market data';
+            }
+        }
+
+        async function loadNewsAndSentiment() {
+            try {
+                const [newsResponse, sentimentResponse] = await Promise.all([
+                    fetch('/api/external/news?limit=10'),
+                    fetch('/api/external/sentiment?limit=50')
+                ]);
+                
+                const newsData = await newsResponse.json();
+                const sentimentData = await sentimentResponse.json();
+                
+                // Update news count
+                document.getElementById('news-count').textContent = newsData.success ? newsData.count : 0;
+                
+                // Update sentiment score
+                const avgSentiment = sentimentData.success ? sentimentData.aggregate.average_sentiment : 0;
+                const sentimentEl = document.getElementById('sentiment-score');
+                sentimentEl.textContent = avgSentiment.toFixed(2);
+                sentimentEl.className = `metric-value ${avgSentiment > 0.1 ? 'positive' : avgSentiment < -0.1 ? 'negative' : 'neutral'}`;
+                
+                // Update news container
+                const newsContainer = document.getElementById('news-container');
+                if (newsData.success && newsData.news.length > 0) {
+                    newsContainer.innerHTML = newsData.news.map(item => `
+                        <div style="padding: 0.75rem; border-bottom: 1px solid #475569; border-left: 3px solid #3b82f6;">
+                            <div style="font-weight: 600; color: #f1f5f9; margin-bottom: 0.25rem;">${item.title}</div>
+                            <div style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.25rem;">${item.source}</div>
+                            <div style="color: #e2e8f0; font-size: 0.9rem;">${item.content}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    newsContainer.innerHTML = '<div style="text-align: center; padding: 2rem; color: #64748b;">No news available</div>';
+                }
+                
+            } catch (error) {
+                console.error('Error loading news and sentiment:', error);
+                document.getElementById('news-container').innerHTML = '<div style="text-align: center; padding: 2rem; color: #ef4444;">Error loading news data</div>';
+            }
+        }
+
+        async function loadAPIStatus() {
+            try {
+                const response = await fetch('/api/external/status');
+                const data = await response.json();
+                
+                const container = document.getElementById('api-services-status');
+                container.innerHTML = '';
+                
+                for (const [serviceName, serviceData] of Object.entries(data.services)) {
+                    const statusClass = serviceData.initialized ? 'status-active' : 'status-inactive';
+                    const statusText = serviceData.initialized ? 'Active' : 'Inactive';
+                    
+                    // Update vision status if it's OpenAI Vision
+                    if (serviceName === 'openai_vision') {
+                        updateVisionStatus(serviceData);
+                    }
+                    
+                    container.innerHTML += `
+                        <div class="ea-status-card">
+                            <div class="ea-header">
+                                <div class="ea-name">${serviceName.replace('_', ' ').toUpperCase()}</div>
+                                <div class="ea-status ${statusClass}">${statusText}</div>
+                            </div>
+                            <div class="ea-metrics">
+                                <div class="ea-metric">
+                                    <span class="metric-label">Cache Size</span>
+                                    <span class="metric-value">${serviceData.cache_size}</span>
+                                </div>
+                                <div class="ea-metric">
+                                    <span class="metric-label">Capabilities</span>
+                                    <span class="metric-value">${serviceData.capabilities ? serviceData.capabilities.join(', ') : 'N/A'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Error loading API status:', error);
+                document.getElementById('api-services-status').innerHTML = '<div style="text-align: center; padding: 2rem; color: #ef4444;">Error loading API status</div>';
+            }
+        }
+
+        function updateVisionStatus(serviceData) {
+            try {
+                const statusEl = document.getElementById('vision-status');
+                const cacheEl = document.getElementById('vision-cache-size');
+                
+                if (serviceData.initialized) {
+                    statusEl.textContent = 'Active';
+                    statusEl.className = 'metric-value positive';
+                } else {
+                    statusEl.textContent = 'Inactive';
+                    statusEl.className = 'metric-value negative';
+                }
+                
+                cacheEl.textContent = serviceData.cache_size || 0;
+                
+            } catch (error) {
+                console.error('Error updating vision status:', error);
+            }
+        }
+
+        async function testVisionConnection() {
+            try {
+                const resultDiv = document.getElementById('vision-test-result');
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 1rem; color: #3b82f6;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="animation: spin 1s linear infinite;">🔄</div>
+                            <span>Testing OpenAI Vision connection...</span>
+                        </div>
+                    </div>
+                `;
+                
+                const response = await fetch('/api/external/vision/test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.connected) {
+                    resultDiv.innerHTML = `
+                        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 1rem; color: #10b981;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span>✅</span>
+                                <span>OpenAI Vision connection successful!</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 1rem; color: #ef4444;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span>❌</span>
+                                <span>OpenAI Vision connection failed</span>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // Hide result after 5 seconds
+                setTimeout(() => {
+                    resultDiv.style.display = 'none';
+                }, 5000);
+                
+            } catch (error) {
+                console.error('Error testing vision connection:', error);
+                document.getElementById('vision-test-result').innerHTML = `
+                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 1rem; color: #ef4444;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span>❌</span>
+                            <span>Error testing connection: ${error.message}</span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Refresh functions for manual updates
+        function refreshExternalData() {
+            loadExternalMarketData();
+        }
+
+        function refreshNewsData() {
+            loadNewsAndSentiment();
+        }
+
+        function refreshAPIStatus() {
+            loadAPIStatus();
+        }
+
+        // Add external data loading to DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔄 Loading external API data on startup...');
+            
+            // Load external data after a short delay to allow other components to initialize
+            setTimeout(function() {
+                loadExternalData();
+                
+                // Set up periodic refresh every 5 minutes
+                setInterval(loadExternalData, 300000);
+            }, 2000);
+        });
+    </script>
+</body>
+</html> 

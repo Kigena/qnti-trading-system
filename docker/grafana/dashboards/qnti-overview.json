@@ -1,0 +1,123 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "QNTI Trading System Overview",
+    "tags": ["qnti", "trading", "overview"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "System Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"qnti-app\"}",
+            "legendFormat": "QNTI App"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Total Trades",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "qnti_total_trades",
+            "legendFormat": "Total"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "Active Positions",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "qnti_active_positions",
+            "legendFormat": "Active Positions"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 4,
+        "title": "Account Balance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "qnti_account_balance",
+            "legendFormat": "Balance"
+          },
+          {
+            "expr": "qnti_account_equity",
+            "legendFormat": "Equity"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 16
+        }
+      },
+      {
+        "id": 5,
+        "title": "CPU Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(container_cpu_usage_seconds_total{name=\"qnti-app\"}[5m]) * 100",
+            "legendFormat": "CPU %"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 24
+        }
+      },
+      {
+        "id": 6,
+        "title": "Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "container_memory_usage_bytes{name=\"qnti-app\"} / 1024 / 1024",
+            "legendFormat": "Memory MB"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 24
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "5s",
+    "schemaVersion": 16,
+    "version": 1
+  }
+}

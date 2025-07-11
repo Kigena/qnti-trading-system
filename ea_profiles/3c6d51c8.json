@@ -1,0 +1,66 @@
+{
+  "name": "QNTI Test EA",
+  "magic_number": 123456,
+  "symbols": [
+    "EURUSD",
+    "GBPUSD"
+  ],
+  "timeframes": [
+    "H1",
+    "H4"
+  ],
+  "parameters": {},
+  "original_code": "//+------------------------------------------------------------------+\n//|                                                 TestEASample.mq4 |\n//|                        Copyright 2024, QNTI Trading Systems Inc |\n//|                                             https://www.qnti.com |\n//+------------------------------------------------------------------+\n#property copyright \"Copyright 2024, QNTI Trading Systems Inc\"\n#property link      \"https://www.qnti.com\"\n#property version   \"1.00\"\n#property strict\n\n//--- input parameters\nextern double LotSize = 0.01;\nextern int StopLoss = 50;\nextern int TakeProfit = 100;\nextern int MagicNumber = 123456;\nextern string TradeComment = \"QNTI Test EA\";\n\n//--- global variables\nint ticket;\ndouble point;\n\n//+------------------------------------------------------------------+\n//| Expert initialization function                                   |\n//+------------------------------------------------------------------+\nint OnInit()\n{\n    point = Point;\n    if(Digits == 5 || Digits == 3) point *= 10;\n    \n    Print(\"QNTI Test EA initialized successfully\");\n    return(INIT_SUCCEEDED);\n}\n\n//+------------------------------------------------------------------+\n//| Expert deinitialization function                                 |\n//+------------------------------------------------------------------+\nvoid OnDeinit(const int reason)\n{\n    Print(\"QNTI Test EA deinitialized\");\n}\n\n//+------------------------------------------------------------------+\n//| Expert tick function                                             |\n//+------------------------------------------------------------------+\nvoid OnTick()\n{\n    // Simple moving average crossover strategy\n    double ma_fast = iMA(NULL, 0, 10, 0, MODE_SMA, PRICE_CLOSE, 1);\n    double ma_slow = iMA(NULL, 0, 20, 0, MODE_SMA, PRICE_CLOSE, 1);\n    double ma_fast_prev = iMA(NULL, 0, 10, 0, MODE_SMA, PRICE_CLOSE, 2);\n    double ma_slow_prev = iMA(NULL, 0, 20, 0, MODE_SMA, PRICE_CLOSE, 2);\n    \n    // Check for buy signal\n    if(ma_fast > ma_slow && ma_fast_prev <= ma_slow_prev && OrdersTotal() == 0)\n    {\n        ticket = OrderSend(Symbol(), OP_BUY, LotSize, Ask, 3, \n                          Ask - StopLoss * point, Ask + TakeProfit * point, \n                          TradeComment, MagicNumber, 0, clrBlue);\n        \n        if(ticket > 0)\n            Print(\"Buy order opened: \", ticket);\n        else\n            Print(\"Failed to open buy order: \", GetLastError());\n    }\n    \n    // Check for sell signal\n    if(ma_fast < ma_slow && ma_fast_prev >= ma_slow_prev && OrdersTotal() == 0)\n    {\n        ticket = OrderSend(Symbol(), OP_SELL, LotSize, Bid, 3, \n                          Bid + StopLoss * point, Bid - TakeProfit * point, \n                          TradeComment, MagicNumber, 0, clrRed);\n        \n        if(ticket > 0)\n            Print(\"Sell order opened: \", ticket);\n        else\n            Print(\"Failed to open sell order: \", GetLastError());\n    }\n}\n\n//+------------------------------------------------------------------+\n//| Custom function to check trading conditions                      |\n//+------------------------------------------------------------------+\nbool IsTradeAllowed()\n{\n    return(IsTradeAllowed() && !IsTradeContextBusy());\n}",
+  "profile": {
+    "parameters": [
+      {
+        "name": "LotSize",
+        "type": "double",
+        "default_value": "0.01",
+        "description": "Lot size for trading"
+      },
+      {
+        "name": "StopLoss",
+        "type": "int",
+        "default_value": "50",
+        "description": "Stop loss in pips"
+      },
+      {
+        "name": "TakeProfit",
+        "type": "int",
+        "default_value": "100",
+        "description": "Take profit in pips"
+      }
+    ],
+    "trading_rules": [
+      {
+        "type": "entry",
+        "direction": "buy",
+        "conditions": [
+          "MA crossover bullish"
+        ],
+        "actions": [
+          "Open buy position"
+        ]
+      },
+      {
+        "type": "entry",
+        "direction": "sell",
+        "conditions": [
+          "MA crossover bearish"
+        ],
+        "actions": [
+          "Open sell position"
+        ]
+      }
+    ],
+    "indicators": [
+      "Moving Average"
+    ],
+    "execution_status": "parsed"
+  },
+  "created_at": "2025-07-08T17:52:27.163981",
+  "status": "inactive",
+  "source": "code_import",
+  "id": "3c6d51c8"
+}

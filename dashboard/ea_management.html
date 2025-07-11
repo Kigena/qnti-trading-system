@@ -1,0 +1,2918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QNTI EA Management</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        .dashboard-header {
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid #334155;
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: #94a3b8;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-link:hover {
+            background: rgba(100, 116, 139, 0.2);
+            color: #f1f5f9;
+        }
+
+        .nav-link.active {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+
+        .main-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .dashboard-card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #475569;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-secondary { background: #64748b; color: white; }
+        .btn-info { background: #8b5cf6; color: white; }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .ea-card {
+            background: rgba(51, 65, 85, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #64748b;
+            transition: all 0.3s;
+        }
+
+        .ea-card.active {
+            border-left-color: #10b981;
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .ea-card.paused {
+            border-left-color: #f59e0b;
+            background: rgba(245, 158, 11, 0.05);
+        }
+
+        .ea-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .ea-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .ea-name {
+            font-weight: 600;
+            color: #f1f5f9;
+            font-size: 1rem;
+        }
+
+        .ea-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-active { background: #10b981; color: white; }
+        .status-paused { background: #f59e0b; color: white; }
+        .status-stopped { background: #ef4444; color: white; }
+
+        .ea-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 0.25rem;
+        }
+
+        .ea-controls {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-sm {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 1rem;
+        }
+
+        .ai-optimization-box {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid #8b5cf6;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .optimization-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background: rgba(51, 65, 85, 0.3);
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .ea-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* EA Profile Modal Styles */
+        .profile-tab {
+            background: none;
+            border: none;
+            padding: 0.75rem 1rem;
+            color: #94a3b8;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+
+        .profile-tab:hover {
+            color: #e2e8f0;
+            background: rgba(51, 65, 85, 0.3);
+        }
+
+        .profile-tab.active {
+            color: #8b5cf6;
+            border-bottom-color: #8b5cf6;
+            background: rgba(139, 92, 246, 0.1);
+        }
+
+        .profile-tab-content {
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .indicator-item, .condition-item {
+            background: rgba(51, 65, 85, 0.3);
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 1rem;
+            position: relative;
+        }
+
+        .indicator-item:hover, .condition-item:hover {
+            border-color: #8b5cf6;
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .remove-item {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .remove-item:hover {
+            background: #dc2626;
+        }
+
+        .recommendation-card {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid #8b5cf6;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .recommendation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .urgency-high { border-left: 4px solid #ef4444; }
+        .urgency-medium { border-left: 4px solid #f59e0b; }
+        .urgency-low { border-left: 4px solid #10b981; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <div class="header-content">
+            <div class="logo">Quantum Nexus Trading Intelligence</div>
+            <nav class="nav-menu">
+                <a href="/" class="nav-link">
+                    <span>📊</span>
+                    <span>Overview</span>
+                </a>
+                <a href="/dashboard/trading_center.html" class="nav-link">
+                    <span>💹</span>
+                    <span>Trading Center</span>
+                </a>
+                <a href="/dashboard/ea_management.html" class="nav-link active">
+                    <span>🤖</span>
+                    <span>EA Management</span>
+                </a>
+                <a href="/dashboard/analytics_reports.html" class="nav-link">
+                    <span>📈</span>
+                    <span>Analytics</span>
+                </a>
+            </nav>
+            <div class="status-indicators">
+                <button class="btn btn-primary" onclick="openAddEAModal()">+ Add EA</button>
+                <button class="btn btn-info" onclick="autoDetectEAs()">🔍 Auto-Detect</button>
+                <button class="btn btn-info" onclick="window.location.href='import_ea.html'" title="Import EA via Code">🧠 Import EA</button>
+                <button class="btn btn-warning" onclick="testProfileSystem()" title="Test Profile System">🧪 Test Profile</button>
+                <button class="btn-secondary" onclick="addTestEA()" title="Add Test EA for debugging">
+                    ➕ Test EA
+                </button>
+                <button class="btn-action" onclick="forceSyncTrades()" title="Force sync trades with MT5">
+                    🔄 Force Sync
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Indicator & Error Message for Redis Cache Integration -->
+    <div id="loading-indicator" style="display: none; position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: rgba(59, 130, 246, 0.9); color: white; padding: 1rem 2rem; border-radius: 8px; z-index: 1000; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+        Loading...
+    </div>
+    
+    <div id="error-message" style="display: none; position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: rgba(239, 68, 68, 0.9); color: white; padding: 1rem 2rem; border-radius: 8px; z-index: 1000; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+        Error message
+    </div>
+
+    <!-- Page Loading Overlay -->
+    <div id="page-loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(30, 41, 59, 0.95); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #e2e8f0;">
+        <div style="text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem; animation: spin 2s linear infinite;">🔄</div>
+            <h2 style="margin: 0 0 1rem 0; color: #3b82f6;">Loading QNTI EA Management</h2>
+            <p style="margin: 0; color: #94a3b8;">Initializing Expert Advisor dashboard...</p>
+            <div id="loading-progress" style="margin-top: 1rem; font-size: 0.9rem; color: #64748b;">Starting up...</div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+
+    <div class="main-container">
+        <!-- EA List Section -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">Expert Advisors</h3>
+                <div style="display: flex; gap: 1rem;">
+                    <input type="text" placeholder="Search EAs..." onkeyup="searchEAs(this.value)" style="padding: 0.5rem; border: 1px solid #475569; border-radius: 4px; background: #334155; color: #f1f5f9;">
+                    <select onchange="filterEAs(this.value)" style="padding: 0.5rem; border: 1px solid #475569; border-radius: 4px; background: #334155; color: #f1f5f9;">
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="paused">Paused</option>
+                        <option value="stopped">Stopped</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="ea-list">
+                <!-- Dynamic EA list will be populated here -->
+                <div id="ea-loading" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                    <div style="font-size: 1.2rem; margin-bottom: 0.5rem;">🔄 Loading Expert Advisors...</div>
+                    <div style="font-size: 0.9rem;">Fetching real-time EA data from QNTI system</div>
+                </div>
+                <div id="no-eas" style="display: none; text-align: center; padding: 2rem; color: #94a3b8;">
+                    <div style="font-size: 1.2rem; margin-bottom: 0.5rem;">🤖 No Expert Advisors Found</div>
+                    <div style="font-size: 0.9rem; margin-bottom: 1rem;">Use the buttons above to add or auto-detect EAs</div>
+                    <button class="btn btn-primary" onclick="autoDetectEAs()">🔍 Auto-Detect EAs</button>
+                </div>
+            </div>
+
+            <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(51, 65, 85, 0.3); border-radius: 8px;">
+                <h4 style="margin-bottom: 0.75rem;">Bulk Actions</h4>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <button class="btn btn-warning" onclick="pauseAllEAs()">⏸️ Pause All</button>
+                    <button class="btn btn-success" onclick="resumeAllEAs()">▶️ Resume All</button>
+                    <button class="btn btn-danger" onclick="stopAllEAs()">⏹️ Stop All</button>
+                    <button class="btn btn-info" onclick="optimizeAllEAs()">🔧 Optimize All</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column -->
+        <div>
+            <!-- EA Performance Chart -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h3 class="card-title">EA Performance Comparison</h3>
+                    <select onchange="updatePerformanceChart(this.value)" style="padding: 0.5rem; border: 1px solid #475569; border-radius: 4px; background: #334155; color: #f1f5f9; font-size: 0.85rem;">
+                        <option value="profit">Profit</option>
+                        <option value="trades">Trades</option>
+                        <option value="winrate">Win Rate</option>
+                    </select>
+                </div>
+                <div class="chart-container">
+                    <canvas id="ea-performance-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- AI Optimization Suggestions -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h3 class="card-title">🤖 AI Optimization Suggestions</h3>
+                    <button class="btn btn-sm btn-primary" onclick="refreshAISuggestions()">Refresh</button>
+                </div>
+                <div class="ai-optimization-box">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <span style="color: #8b5cf6; font-weight: 600;">Latest Analysis</span>
+                        <span id="ai-suggestions-timestamp" style="font-size: 0.8rem; color: #94a3b8;">Loading...</span>
+                    </div>
+                    <div style="color: #e2e8f0; font-size: 0.9rem; margin-bottom: 1rem;">
+                        AI has analyzed your EAs performance and market conditions. Here are the recommendations:
+                    </div>
+                </div>
+                <div id="ai-suggestions-list">
+                    <div style="text-align: center; padding: 1rem; color: #94a3b8;">
+                        <div style="font-size: 0.9rem;">🔄 Loading AI suggestions...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EA Activity Monitor -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h3 class="card-title">EA Activity Monitor</h3>
+                </div>
+                <div id="activity-monitor">
+                    <div style="padding: 0.75rem; background: rgba(51, 65, 85, 0.3); border-radius: 6px; margin-bottom: 0.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span style="color: #10b981;">●</span>
+                                <span style="margin-left: 0.5rem;">TrendMaster Pro</span>
+                            </div>
+                            <span style="font-size: 0.8rem; color: #94a3b8;">Opened BUY EURUSD</span>
+                        </div>
+                        <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">2 minutes ago</div>
+                    </div>
+                    <div style="padding: 0.75rem; background: rgba(51, 65, 85, 0.3); border-radius: 6px; margin-bottom: 0.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span style="color: #f59e0b;">●</span>
+                                <span style="margin-left: 0.5rem;">Scalper X</span>
+                            </div>
+                            <span style="font-size: 0.8rem; color: #94a3b8;">Paused by user</span>
+                        </div>
+                        <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">15 minutes ago</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add EA Modal -->
+    <div id="add-ea-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1e293b; padding: 2rem; border-radius: 12px; border: 1px solid #334155; width: 90%; max-width: 500px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 style="color: #f1f5f9; margin: 0;">Register New EA</h3>
+                <button onclick="closeAddEAModal()" style="background: none; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer;">×</button>
+            </div>
+            <form onsubmit="registerEA(event)">
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">EA Name</label>
+                    <input type="text" required placeholder="e.g., MyTradingBot" style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9;">
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Magic Number</label>
+                    <input type="number" required placeholder="e.g., 12345" style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9;">
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Symbol</label>
+                    <select required style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9;">
+                        <option value="">Select Symbol</option>
+                        <option value="EURUSD">EURUSD</option>
+                        <option value="GBPUSD">GBPUSD</option>
+                        <option value="USDJPY">USDJPY</option>
+                        <option value="AUDUSD">AUDUSD</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Timeframe</label>
+                    <select required style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9;">
+                        <option value="M1">M1</option>
+                        <option value="M5">M5</option>
+                        <option value="M15">M15</option>
+                        <option value="M30">M30</option>
+                        <option value="H1" selected>H1</option>
+                        <option value="H4">H4</option>
+                        <option value="D1">D1</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">
+                        <input type="checkbox" onchange="toggleAIAssist()"> Use AI Assistant for Setup
+                    </label>
+                </div>
+                <div id="ai-assist" style="display: none; background: rgba(139, 92, 246, 0.1); border: 1px solid #8b5cf6; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                    <div style="color: #8b5cf6; font-weight: 600; margin-bottom: 0.5rem;">🤖 AI Setup Assistant</div>
+                    <div style="color: #e2e8f0; font-size: 0.9rem;">
+                        AI will analyze your EA's strategy and suggest optimal settings based on current market conditions.
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddEAModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Register EA</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- EA Profile Management Modal -->
+    <div id="ea-profile-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; overflow-y: auto;">
+        <div style="position: absolute; top: 2%; left: 50%; transform: translateX(-50%); background: #1e293b; padding: 2rem; border-radius: 12px; border: 1px solid #334155; width: 95%; max-width: 1200px; max-height: 96vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid #475569; padding-bottom: 1rem;">
+                <h2 style="color: #f1f5f9; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    🤖 <span id="profile-ea-name">EA Profile Management</span>
+                </h2>
+                <button onclick="closeEAProfile()" style="background: none; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer;">×</button>
+            </div>
+
+            <!-- Profile Navigation Tabs -->
+            <div style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid #475569;">
+                <button class="profile-tab active" data-tab="overview" onclick="switchProfileTab('overview')">📊 Overview</button>
+                <button class="profile-tab" data-tab="strategy" onclick="switchProfileTab('strategy')">🎯 Strategy</button>
+                <button class="profile-tab" data-tab="indicators" onclick="switchProfileTab('indicators')">📈 Indicators</button>
+                <button class="profile-tab" data-tab="conditions" onclick="switchProfileTab('conditions')">🔄 Trading Logic</button>
+                <button class="profile-tab" data-tab="risk" onclick="switchProfileTab('risk')">⚠️ Risk Management</button>
+                <button class="profile-tab" data-tab="optimization" onclick="switchProfileTab('optimization')">🔧 Optimization</button>
+            </div>
+
+            <!-- Profile Content Sections -->
+            <div id="profile-content">
+                <!-- Overview Tab -->
+                <div id="tab-overview" class="profile-tab-content">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <div>
+                            <h4 style="color: #8b5cf6; margin-bottom: 1rem;">Basic Information</h4>
+                            <div style="display: grid; gap: 1rem;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">EA Name</label>
+                                    <input type="text" id="profile-name" placeholder="EA Name" style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9;">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Magic Number</label>
+                                    <input type="number" id="profile-magic" placeholder="Magic Number" style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9;">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Symbol</label>
+                                    <select id="profile-symbol" style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9;">
+                                        <option value="EURUSD">EURUSD</option>
+                                        <option value="GBPUSD">GBPUSD</option>
+                                        <option value="USDJPY">USDJPY</option>
+                                        <option value="USDCHF">USDCHF</option>
+                                        <option value="AUDUSD">AUDUSD</option>
+                                        <option value="USDCAD">USDCAD</option>
+                                        <option value="GOLD">GOLD</option>
+                                        <option value="SILVER">SILVER</option>
+                                        <option value="BTCUSD">BTCUSD</option>
+                                        <option value="US30Cash">US30Cash</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Description</label>
+                                    <textarea id="profile-description" placeholder="EA Description..." style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9; resize: vertical; height: 80px;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 style="color: #8b5cf6; margin-bottom: 1rem;">EA Characteristics</h4>
+                            <div style="display: grid; gap: 1rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="profile-grid" style="margin: 0;">
+                                    <label for="profile-grid" style="color: #e2e8f0;">Grid-based Trading</label>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="profile-martingale" style="margin: 0;">
+                                    <label for="profile-martingale" style="color: #e2e8f0;">Uses Martingale</label>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="profile-hedging" style="margin: 0;">
+                                    <label for="profile-hedging" style="color: #e2e8f0;">Uses Hedging</label>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="profile-news" style="margin: 0;">
+                                    <label for="profile-news" style="color: #e2e8f0;">News Sensitive</label>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="profile-lowspread" style="margin: 0;">
+                                    <label for="profile-lowspread" style="color: #e2e8f0;">Requires Low Spread</label>
+                                </div>
+                            </div>
+                            
+                            <h4 style="color: #8b5cf6; margin: 1.5rem 0 1rem 0;">Performance Indicators</h4>
+                            <div id="profile-performance" style="background: rgba(51, 65, 85, 0.3); padding: 1rem; border-radius: 8px;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.9rem;">
+                                    <div>Total Trades: <span id="perf-trades">-</span></div>
+                                    <div>Win Rate: <span id="perf-winrate">-</span></div>
+                                    <div>Profit Factor: <span id="perf-profit-factor">-</span></div>
+                                    <div>Max Drawdown: <span id="perf-drawdown">-</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Strategy Tab -->
+                <div id="tab-strategy" class="profile-tab-content" style="display: none;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <div>
+                            <h4 style="color: #8b5cf6; margin-bottom: 1rem;">Strategy Configuration</h4>
+                            <div style="display: grid; gap: 1rem;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Strategy Type</label>
+                                    <select id="profile-strategy-type" style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9;">
+                                        <option value="trend_following">Trend Following</option>
+                                        <option value="scalping">Scalping</option>
+                                        <option value="grid_trading">Grid Trading</option>
+                                        <option value="breakout">Breakout</option>
+                                        <option value="mean_reversion">Mean Reversion</option>
+                                        <option value="hedging">Hedging</option>
+                                        <option value="arbitrage">Arbitrage</option>
+                                        <option value="news_trading">News Trading</option>
+                                        <option value="martingale">Martingale</option>
+                                        <option value="counter_trend">Counter Trend</option>
+                                        <option value="correlation">Correlation</option>
+                                        <option value="unknown">Unknown</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Primary Timeframe</label>
+                                    <select id="profile-timeframe" style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9;">
+                                        <option value="M1">M1 (1 Minute)</option>
+                                        <option value="M5">M5 (5 Minutes)</option>
+                                        <option value="M15">M15 (15 Minutes)</option>
+                                        <option value="M30">M30 (30 Minutes)</option>
+                                        <option value="H1">H1 (1 Hour)</option>
+                                        <option value="H4">H4 (4 Hours)</option>
+                                        <option value="D1">D1 (Daily)</option>
+                                        <option value="W1">W1 (Weekly)</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="profile-multi-timeframe" style="margin: 0;">
+                                    <label for="profile-multi-timeframe" style="color: #e2e8f0;">Uses Multiple Timeframes</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 style="color: #8b5cf6; margin-bottom: 1rem;">Market Sessions</h4>
+                            <div style="display: grid; gap: 0.75rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="session-london" style="margin: 0;">
+                                    <label for="session-london" style="color: #e2e8f0;">London Session</label>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="session-newyork" style="margin: 0;">
+                                    <label for="session-newyork" style="color: #e2e8f0;">New York Session</label>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="session-tokyo" style="margin: 0;">
+                                    <label for="session-tokyo" style="color: #e2e8f0;">Tokyo Session</label>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="session-sydney" style="margin: 0;">
+                                    <label for="session-sydney" style="color: #e2e8f0;">Sydney Session</label>
+                                </div>
+                            </div>
+                            
+                            <h4 style="color: #8b5cf6; margin: 1.5rem 0 1rem 0;">Best Market Conditions</h4>
+                            <div style="display: grid; gap: 0.75rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="condition-trending" style="margin: 0;">
+                                    <label for="condition-trending" style="color: #e2e8f0;">Trending Markets</label>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="condition-ranging" style="margin: 0;">
+                                    <label for="condition-ranging" style="color: #e2e8f0;">Ranging Markets</label>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="condition-volatile" style="margin: 0;">
+                                    <label for="condition-volatile" style="color: #e2e8f0;">High Volatility</label>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="condition-lowvol" style="margin: 0;">
+                                    <label for="condition-lowvol" style="color: #e2e8f0;">Low Volatility</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Indicators Tab -->
+                <div id="tab-indicators" class="profile-tab-content" style="display: none;">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <h4 style="color: #8b5cf6; margin: 0;">Technical Indicators</h4>
+                            <button class="btn btn-primary" onclick="addIndicator()">+ Add Indicator</button>
+                        </div>
+                        
+                        <div id="indicators-list" style="display: grid; gap: 1rem;">
+                            <!-- Indicators will be added dynamically -->
+                        </div>
+                        
+                        <div id="no-indicators" style="text-align: center; padding: 2rem; color: #94a3b8; background: rgba(51, 65, 85, 0.3); border-radius: 8px;">
+                            <div style="font-size: 1.1rem; margin-bottom: 0.5rem;">📈 No Indicators Configured</div>
+                            <div style="font-size: 0.9rem;">Add indicators to define your EA's technical analysis logic</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trading Logic Tab -->
+                <div id="tab-conditions" class="profile-tab-content" style="display: none;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h4 style="color: #8b5cf6; margin: 0;">Entry Conditions</h4>
+                                <button class="btn btn-sm btn-primary" onclick="addEntryCondition()">+ Add</button>
+                            </div>
+                            <div id="entry-conditions-list" style="display: grid; gap: 1rem;">
+                                <!-- Entry conditions will be added dynamically -->
+                            </div>
+                            <div id="no-entry-conditions" style="text-align: center; padding: 1.5rem; color: #94a3b8; background: rgba(51, 65, 85, 0.3); border-radius: 8px; margin-top: 1rem;">
+                                <div>No entry conditions defined</div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h4 style="color: #8b5cf6; margin: 0;">Exit Conditions</h4>
+                                <button class="btn btn-sm btn-primary" onclick="addExitCondition()">+ Add</button>
+                            </div>
+                            <div id="exit-conditions-list" style="display: grid; gap: 1rem;">
+                                <!-- Exit conditions will be added dynamically -->
+                            </div>
+                            <div id="no-exit-conditions" style="text-align: center; padding: 1.5rem; color: #94a3b8; background: rgba(51, 65, 85, 0.3); border-radius: 8px; margin-top: 1rem;">
+                                <div>No exit conditions defined</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risk Management Tab -->
+                <div id="tab-risk" class="profile-tab-content" style="display: none;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <div>
+                            <h4 style="color: #8b5cf6; margin-bottom: 1rem;">Position Sizing</h4>
+                            <div style="display: grid; gap: 1rem;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Lot Sizing Method</label>
+                                    <select id="risk-lot-method" style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9;">
+                                        <option value="fixed">Fixed Lot Size</option>
+                                        <option value="percentage">Percentage of Balance</option>
+                                        <option value="risk_based">Risk-Based Sizing</option>
+                                        <option value="martingale">Martingale Progression</option>
+                                        <option value="dynamic">Dynamic Sizing</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Base Lot Size</label>
+                                    <input type="number" id="risk-lot-size" step="0.01" min="0.01" value="0.01" style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9;">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Max Risk Per Trade (%)</label>
+                                    <input type="number" id="risk-per-trade" step="0.1" min="0.1" max="10" value="2" style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9;">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Max Open Trades</label>
+                                    <input type="number" id="risk-max-trades" min="1" max="20" value="1" style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9;">
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 style="color: #8b5cf6; margin-bottom: 1rem;">Risk Limits</h4>
+                            <div style="display: grid; gap: 1rem;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Max Drawdown Limit (%)</label>
+                                    <input type="number" id="risk-max-drawdown" step="1" min="5" max="50" value="20" style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9;">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Daily Loss Limit ($)</label>
+                                    <input type="number" id="risk-daily-limit" step="10" min="0" placeholder="0 = No Limit" style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9;">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Max Spread (pips)</label>
+                                    <input type="number" id="risk-max-spread" step="0.1" min="0" value="3" style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9;">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Stop Loss Type</label>
+                                    <select id="risk-stop-type" style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9;">
+                                        <option value="fixed_pips">Fixed Pips</option>
+                                        <option value="atr_multiple">ATR Multiple</option>
+                                        <option value="percentage">Percentage</option>
+                                        <option value="support_resistance">Support/Resistance</option>
+                                        <option value="none">No Stop Loss</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Take Profit Type</label>
+                                    <select id="risk-tp-type" style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9;">
+                                        <option value="fixed_pips">Fixed Pips</option>
+                                        <option value="risk_reward">Risk:Reward Ratio</option>
+                                        <option value="trailing">Trailing Stop</option>
+                                        <option value="partial">Partial Profit Taking</option>
+                                        <option value="none">No Take Profit</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Optimization Tab -->
+                <div id="tab-optimization" class="profile-tab-content" style="display: none;">
+                    <div>
+                        <h4 style="color: #8b5cf6; margin-bottom: 1rem;">AI Optimization Recommendations</h4>
+                        <div id="optimization-recommendations" style="display: grid; gap: 1rem;">
+                            <!-- Recommendations will be loaded dynamically -->
+                        </div>
+                        
+                        <div style="margin-top: 2rem;">
+                            <h4 style="color: #8b5cf6; margin-bottom: 1rem;">Optimization Parameters</h4>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                                <div>
+                                    <h5 style="color: #e2e8f0; margin-bottom: 0.75rem;">Strengths</h5>
+                                    <textarea id="optimization-strengths" placeholder="e.g., High win rate, Good trend following..." style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9; resize: vertical; height: 100px;"></textarea>
+                                </div>
+                                <div>
+                                    <h5 style="color: #e2e8f0; margin-bottom: 0.75rem;">Weaknesses</h5>
+                                    <textarea id="optimization-weaknesses" placeholder="e.g., Poor in ranging markets, High drawdown..." style="width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9; resize: vertical; height: 100px;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Actions -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #475569;">
+                <div>
+                    <span style="color: #94a3b8; font-size: 0.9rem;">
+                        Profile Confidence: <span id="profile-confidence" style="color: #10b981;">85%</span>
+                    </span>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn btn-secondary" onclick="resetProfile()">Reset</button>
+                    <button class="btn btn-warning" onclick="autoDetectProfile()">🔍 Auto-Detect</button>
+                    <button class="btn btn-success" onclick="saveEAProfile()">💾 Save Profile</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Performance Chart with empty data
+        const ctx = document.getElementById('ea-performance-chart').getContext('2d');
+        let performanceChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Total Profit ($)',
+                    data: [],
+                    backgroundColor: [],
+                    borderColor: [],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(100, 116, 139, 0.2)' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    x: {
+                        grid: { color: 'rgba(100, 116, 139, 0.2)' },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+
+        function openAddEAModal() {
+            document.getElementById('add-ea-modal').style.display = 'block';
+        }
+
+        function closeAddEAModal() {
+            document.getElementById('add-ea-modal').style.display = 'none';
+        }
+
+        function toggleAIAssist() {
+            const aiBox = document.getElementById('ai-assist');
+            aiBox.style.display = aiBox.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function registerEA(event) {
+            event.preventDefault();
+            console.log('Registering new EA...');
+            closeAddEAModal();
+        }
+
+        function pauseEA(name) {
+            console.log(`Pausing EA: ${name}`);
+        }
+
+        function resumeEA(name) {
+            console.log(`Resuming EA: ${name}`);
+        }
+
+        function removeEA(name) {
+            if (confirm(`Remove EA "${name}"?`)) {
+                console.log(`Removing EA: ${name}`);
+            }
+        }
+
+        function viewEADetails(name) {
+            console.log(`Viewing details for: ${name}`);
+        }
+
+        function optimizeEA(name) {
+            console.log(`Optimizing EA: ${name}`);
+        }
+
+        async function applyOptimization(suggestion) {
+            try {
+                console.log(`🔧 Applying optimization: ${suggestion}`);
+                
+                // Show loading state
+                const button = event.target;
+                const originalText = button.textContent;
+                button.textContent = 'Applying...';
+                button.disabled = true;
+                
+                // Parse suggestion type and apply appropriate action
+                let apiCall;
+                
+                if (suggestion.includes('High Frequency')) {
+                    // Apply risk reduction to high frequency EAs
+                    apiCall = fetch('/api/eas/bulk-control', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'reduce_risk',
+                            ea_filter: { type: 'high_frequency' },
+                            parameters: { lot_multiplier: 0.7, max_spread: 2.0 }
+                        })
+                    });
+                } else if (suggestion.includes('Trend Following')) {
+                    // Optimize trend following EAs
+                    apiCall = fetch('/api/eas/bulk-control', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'optimize_trend',
+                            ea_filter: { strategy: 'trend_following' },
+                            parameters: { trend_sensitivity: 1.2, stop_loss_multiplier: 1.1 }
+                        })
+                    });
+                } else if (suggestion.includes('Grid Trading')) {
+                    // Adjust grid trading parameters
+                    apiCall = fetch('/api/eas/bulk-control', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'adjust_grid',
+                            ea_filter: { strategy: 'grid' },
+                            parameters: { grid_spacing_multiplier: 1.3 }
+                        })
+                    });
+                } else if (suggestion.includes('Risk Management')) {
+                    // Apply risk management optimization to all EAs
+                    apiCall = fetch('/api/eas/bulk-control', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'optimize_risk',
+                            ea_filter: { status: 'active' },
+                            parameters: { max_risk_per_trade: 0.02, max_total_risk: 0.10 }
+                        })
+                    });
+                } else if (suggestion.includes('Strategy Optimization')) {
+                    // Optimize entry/exit criteria
+                    apiCall = fetch('/api/eas/bulk-control', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'optimize_strategy',
+                            ea_filter: { status: 'active' },
+                            parameters: { optimize_entry: true, optimize_exit: true }
+                        })
+                    });
+                } else {
+                    // General optimization for all EAs
+                    apiCall = fetch('/api/eas/bulk-control', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'general_optimize',
+                            ea_filter: { status: 'active' },
+                            parameters: { auto_adjust: true, market_adaptive: true }
+                        })
+                    });
+                }
+                
+                const response = await apiCall;
+                const result = await response.json();
+                
+                if (response.ok) {
+                    button.textContent = '✅ Applied';
+                    button.style.backgroundColor = '#10b981';
+                    
+                    // Show success notification
+                    showNotification(`✅ Optimization applied: ${suggestion}`, 'success');
+                    
+                    // Refresh EA data to show updated status
+                    setTimeout(() => {
+                        updateEAList();
+                    }, 2000);
+                    
+                    console.log('✅ Optimization applied successfully:', result);
+                } else {
+                    throw new Error(result.error || 'Failed to apply optimization');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error applying optimization:', error);
+                
+                // Restore button state
+                button.textContent = originalText;
+                button.disabled = false;
+                
+                // Show error notification
+                showNotification(`❌ Failed to apply optimization: ${error.message}`, 'error');
+            }
+        }
+
+        function autoDetectEAs() {
+            console.log('Auto-detecting EAs...');
+        }
+
+        function searchEAs(query) {
+            console.log(`Searching EAs: ${query}`);
+        }
+
+        function filterEAs(status) {
+            console.log(`Filtering EAs by status: ${status}`);
+        }
+
+        function updatePerformanceChart(metric) {
+            console.log(`Updating chart with metric: ${metric}`);
+            // Re-fetch and update chart based on selected metric
+            updateEAData();
+        }
+
+        function refreshAISuggestions() {
+            console.log('Refreshing AI suggestions...');
+            updateAISuggestions();
+        }
+        
+        async function updateAISuggestions() {
+            try {
+                console.log('🤖 Fetching AI insights for optimization suggestions...');
+                
+                // Fetch AI insights for optimization suggestions
+                const response = await fetchWithTimeout('/api/ai/insights/all');
+                const insights = await response.json();
+                
+                console.log('🤖 AI insights received:', insights);
+                
+                const suggestionsDiv = document.getElementById('ai-suggestions-list');
+                if (!suggestionsDiv) return;
+                
+                if (!insights || !insights.insights) {
+                    suggestionsDiv.innerHTML = `
+                        <div style="text-align: center; padding: 1rem; color: #94a3b8;">
+                            <div style="font-size: 0.9rem;">🤖 No AI insights available</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Generate suggestions based on AI insights
+                const suggestions = generateOptimizationSuggestions(insights.insights);
+                
+                let suggestionsHTML = '';
+                suggestions.forEach(suggestion => {
+                    suggestionsHTML += `
+                        <div class="optimization-item">
+                            <div>
+                                <div style="font-weight: 600;">${suggestion.ea_name}</div>
+                                <div style="font-size: 0.8rem; color: #94a3b8;">${suggestion.recommendation}</div>
+                            </div>
+                            <button class="btn btn-sm btn-info" onclick="applyOptimization('${suggestion.recommendation}')">Apply</button>
+                        </div>
+                    `;
+                });
+                
+                if (suggestionsHTML === '') {
+                    suggestionsHTML = `
+                        <div style="text-align: center; padding: 1rem; color: #94a3b8;">
+                            <div style="font-size: 0.9rem;">✅ All EAs optimally configured</div>
+                        </div>
+                    `;
+                }
+                
+                suggestionsDiv.innerHTML = suggestionsHTML;
+                
+                // Update timestamp
+                const timestampEl = document.getElementById('ai-suggestions-timestamp');
+                if (timestampEl) {
+                    timestampEl.textContent = 'Just now';
+                }
+                
+                console.log('✅ AI suggestions updated successfully');
+                
+            } catch (error) {
+                console.error('❌ Error updating AI suggestions:', error);
+                const suggestionsDiv = document.getElementById('ai-suggestions-list');
+                if (suggestionsDiv) {
+                    suggestionsDiv.innerHTML = `
+                        <div style="text-align: center; padding: 1rem; color: #ef4444;">
+                            <div style="font-size: 0.9rem;">❌ Error loading suggestions</div>
+                            <div style="font-size: 0.8rem; margin-top: 0.5rem; color: #94a3b8;">Check console for details</div>
+                        </div>
+                    `;
+                }
+            }
+        }
+        
+        function generateOptimizationSuggestions(insights) {
+            const suggestions = [];
+            
+            console.log('🔍 Generating optimization suggestions from insights:', insights);
+            
+            // Generate suggestions based on market sentiment
+            if (insights.market) {
+                const marketText = insights.market.toLowerCase();
+                
+                if (marketText.includes('volatile') || marketText.includes('volatility')) {
+                    suggestions.push({
+                        ea_name: 'High Frequency EAs',
+                        recommendation: 'Reduce position sizes due to high volatility detected'
+                    });
+                }
+                
+                if (marketText.includes('trend') || marketText.includes('bull') || marketText.includes('bear')) {
+                    suggestions.push({
+                        ea_name: 'Trend Following EAs',
+                        recommendation: 'Optimize trend detection parameters based on current market direction'
+                    });
+                }
+                
+                if (marketText.includes('range') || marketText.includes('sideways')) {
+                    suggestions.push({
+                        ea_name: 'Grid Trading EAs',
+                        recommendation: 'Increase grid spacing for ranging market conditions'
+                    });
+                }
+            }
+            
+            // Generate suggestions based on account analysis
+            if (insights.account) {
+                const accountText = insights.account.toLowerCase();
+                
+                if (accountText.includes('risk') || accountText.includes('margin')) {
+                    suggestions.push({
+                        ea_name: 'Risk Management',
+                        recommendation: 'Review position sizing and margin requirements'
+                    });
+                }
+                
+                if (accountText.includes('drawdown')) {
+                    suggestions.push({
+                        ea_name: 'All EAs',
+                        recommendation: 'Implement stricter drawdown controls'
+                    });
+                }
+            }
+            
+            // Generate suggestions based on performance analysis
+            if (insights.performance) {
+                const performanceText = insights.performance.toLowerCase();
+                
+                if (performanceText.includes('win rate') || performanceText.includes('success')) {
+                    suggestions.push({
+                        ea_name: 'Strategy Optimization',
+                        recommendation: 'Fine-tune entry and exit criteria for better win rates'
+                    });
+                }
+                
+                if (performanceText.includes('profit')) {
+                    suggestions.push({
+                        ea_name: 'Profit Optimization',
+                        recommendation: 'Adjust take profit levels based on recent performance'
+                    });
+                }
+            }
+            
+            // Add general suggestions if no specific ones generated
+            if (suggestions.length === 0) {
+                suggestions.push({
+                    ea_name: 'General Optimization',
+                    recommendation: 'Review EA settings based on current market conditions'
+                });
+                
+                suggestions.push({
+                    ea_name: 'Risk Management',
+                    recommendation: 'Monitor position sizes and risk exposure levels'
+                });
+            }
+            
+            console.log('✅ Generated', suggestions.length, 'optimization suggestions');
+            return suggestions.slice(0, 4); // Limit to 4 suggestions
+        }
+
+        function pauseAllEAs() {
+            if (confirm('Pause all EAs?')) {
+                console.log('Pausing all EAs...');
+            }
+        }
+
+        function resumeAllEAs() {
+            if (confirm('Resume all EAs?')) {
+                console.log('Resuming all EAs...');
+            }
+        }
+
+        function stopAllEAs() {
+            if (confirm('Stop all EAs? This will close all EA positions.')) {
+                console.log('Stopping all EAs...');
+            }
+        }
+
+        function optimizeAllEAs() {
+            console.log('Optimizing all EAs with AI...');
+        }
+
+        // Functions for handling uploaded EA profiles
+        async function startUploadedEA(profileId) {
+            try {
+                console.log(`🚀 Starting uploaded EA profile: ${profileId}`);
+                
+                const response = await fetch(`/api/ea/profiles/${profileId}/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        parameters: {} // Could include custom execution parameters
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(`✅ Started EA: ${result.message}`, 'success');
+                    setTimeout(() => updateEAData(), 2000); // Refresh EA list
+                } else {
+                    showNotification(`❌ Failed to start EA: ${result.error}`, 'error');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error starting uploaded EA:', error);
+                showNotification(`❌ Error starting EA: ${error.message}`, 'error');
+            }
+        }
+
+        async function viewEACode(profileId) {
+            try {
+                console.log(`📜 Viewing code for EA profile: ${profileId}`);
+                
+                // Find the uploaded profile in our cached data
+                const profile = window.lastEAData?.find(ea => ea.profile_id === profileId)?.uploaded_profile;
+                
+                if (!profile || !profile.original_code) {
+                    showNotification('❌ No source code available for this EA', 'error');
+                    return;
+                }
+                
+                // Create a modal to display the code
+                const codeModal = document.createElement('div');
+                codeModal.style.cssText = `
+                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                    background: rgba(0,0,0,0.9); z-index: 1001; overflow-y: auto;
+                `;
+                
+                codeModal.innerHTML = `
+                    <div style="position: relative; background: #1e293b; margin: 2rem; padding: 2rem; border-radius: 12px; border: 1px solid #334155; max-height: 90vh; overflow-y: auto;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #475569; padding-bottom: 1rem;">
+                            <h3 style="color: #f1f5f9; margin: 0;">📜 ${profile.name} - Source Code</h3>
+                            <button onclick="this.closest('.code-modal').remove()" style="background: none; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer;">×</button>
+                        </div>
+                        <pre style="background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.4; max-height: 70vh; overflow-y: auto;">${profile.original_code}</pre>
+                        <div style="margin-top: 1rem; text-align: right;">
+                            <button onclick="this.closest('.code-modal').remove()" class="btn btn-secondary">Close</button>
+                        </div>
+                    </div>
+                `;
+                
+                codeModal.className = 'code-modal';
+                document.body.appendChild(codeModal);
+                
+            } catch (error) {
+                console.error('❌ Error viewing EA code:', error);
+                showNotification(`❌ Error viewing code: ${error.message}`, 'error');
+            }
+        }
+        
+        async function refreshAISuggestions() {
+            console.log('🔄 Refreshing AI suggestions...');
+            
+            // Show loading state on button
+            const refreshBtn = event.target;
+            const originalText = refreshBtn.textContent;
+            refreshBtn.textContent = 'Refreshing...';
+            refreshBtn.disabled = true;
+            
+            try {
+                // Force refresh AI suggestions
+                await updateAISuggestions();
+                
+                // Show success feedback
+                refreshBtn.textContent = '✅ Refreshed';
+                refreshBtn.style.backgroundColor = '#10b981';
+                
+                // Reset button after 2 seconds
+                setTimeout(() => {
+                    refreshBtn.textContent = originalText;
+                    refreshBtn.disabled = false;
+                    refreshBtn.style.backgroundColor = '';
+                }, 2000);
+                
+                showNotification('✅ AI suggestions refreshed successfully', 'success');
+                
+            } catch (error) {
+                console.error('❌ Error refreshing AI suggestions:', error);
+                
+                // Reset button state
+                refreshBtn.textContent = originalText;
+                refreshBtn.disabled = false;
+                
+                showNotification('❌ Failed to refresh AI suggestions', 'error');
+            }
+        }
+        
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 1rem 1.5rem;
+                border-radius: 8px;
+                color: white;
+                font-weight: 600;
+                z-index: 9999;
+                min-width: 300px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                transition: all 0.3s ease;
+            `;
+            
+            // Set color based on type
+            switch (type) {
+                case 'success':
+                    notification.style.backgroundColor = '#10b981';
+                    break;
+                case 'error':
+                    notification.style.backgroundColor = '#ef4444';
+                    break;
+                case 'warning':
+                    notification.style.backgroundColor = '#f59e0b';
+                    break;
+                default:
+                    notification.style.backgroundColor = '#3b82f6';
+            }
+            
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            // Remove notification after 5 seconds
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 5000);
+        }
+
+        // === REDIS CACHE INTEGRATION & TIMEOUT HANDLING ===
+        // Configuration for timeout handling and retry logic
+        const API_TIMEOUT = 60000; // 60 seconds timeout for slow backend responses
+        const RETRY_DELAY = 5000;   // 5 seconds between retries
+        const MAX_RETRIES = 3;      // Maximum number of retry attempts
+        
+        // Global state management
+        let isUpdating = false;
+        let retryCount = 0;
+        let lastUpdateTime = 0;
+        
+        // Enhanced fetch with timeout and retry logic
+        async function fetchWithTimeout(url, options = {}) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+            
+            try {
+                showLoading(`Fetching ${url}...`);
+                const response = await fetch(url, { 
+                    ...options, 
+                    signal: controller.signal 
+                });
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                hideLoading();
+                return response;
+            } catch (error) {
+                clearTimeout(timeoutId);
+                hideLoading();
+                
+                if (error.name === 'AbortError') {
+                    showError(`Request to ${url} timed out after ${API_TIMEOUT/1000}s`);
+                    throw new Error(`Timeout: ${url}`);
+                }
+                throw error;
+            }
+        }
+        
+        // Enhanced loading indicator
+        function showLoading(message) {
+            const indicator = document.getElementById('loading-indicator');
+            if (indicator) {
+                indicator.style.display = 'block';
+                indicator.textContent = message || 'Loading...';
+            }
+            console.log('⏳', message);
+        }
+        
+        function hideLoading() {
+            const indicator = document.getElementById('loading-indicator');
+            if (indicator) {
+                indicator.style.display = 'none';
+            }
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            if (errorDiv) {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                }, 10000);
+            }
+            console.error('❌', message);
+        }
+        
+        function showNotification(message, type = 'info') {
+            console.log(`📢 ${type.toUpperCase()}: ${message}`);
+            
+            // Try to use existing error/loading divs for notifications
+            if (type === 'error') {
+                showError(message);
+                return;
+            }
+            
+            // Create a simple notification
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                background: ${type === 'success' ? '#10b981' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
+                color: white;
+                padding: 1rem 2rem;
+                border-radius: 8px;
+                z-index: 1001;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                max-width: 400px;
+                font-size: 0.9rem;
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 5000);
+        }
+        
+        // Load uploaded EA profiles and merge with runtime EAs
+        async function loadUploadedEAProfiles() {
+            try {
+                console.log('📂 Loading uploaded EA profiles...');
+                const response = await fetchWithTimeout('/api/ea/profiles');
+                const result = await response.json();
+                
+                if (result.success && result.profiles) {
+                    console.log(`✅ Loaded ${result.profiles.length} uploaded EA profiles`);
+                    return result.profiles;
+                }
+                
+                console.log('ℹ️ No uploaded EA profiles found');
+                return [];
+            } catch (error) {
+                console.error('❌ Error loading uploaded EA profiles:', error);
+                return [];
+            }
+        }
+
+        // Real-time EA data updates with Redis cache optimization
+        async function updateEAData() {
+            if (isUpdating) {
+                console.log('⏳ EA data update already in progress, skipping...');
+                return;
+            }
+            
+            isUpdating = true;
+            const startTime = Date.now();
+            console.log('🔄 Starting EA data update with Redis cache optimization...');
+            
+            try {
+                // Fetch EA list and performance data with timeout handling
+                const response = await fetchWithTimeout('/api/eas');
+                const eas = await response.json();
+                
+                // Also load uploaded EA profiles
+                const uploadedProfiles = await loadUploadedEAProfiles();
+                
+                console.log('🤖 EA data received:', eas);
+                console.log('📂 Uploaded profiles received:', uploadedProfiles);
+                
+                // Merge uploaded profiles with runtime EA data
+                let mergedEAData = [];
+                
+                // Start with runtime EAs
+                if (Array.isArray(eas)) {
+                    mergedEAData = [...eas];
+                } else if (eas && typeof eas === 'object') {
+                    mergedEAData = eas.eas || eas.data || [];
+                } else {
+                    console.warn('⚠️ Unexpected EA data format:', eas);
+                    mergedEAData = [];
+                }
+                
+                // Add uploaded profiles that aren't already in runtime data
+                uploadedProfiles.forEach(profile => {
+                    const existingEA = mergedEAData.find(ea => 
+                        ea.magic_number === profile.magic_number || 
+                        ea.name === profile.name
+                    );
+                    
+                    if (!existingEA) {
+                        // Convert uploaded profile to EA format for display
+                        const profileAsEA = {
+                            name: profile.name,
+                            magic_number: profile.magic_number,
+                            symbols: profile.symbols || [],
+                            timeframes: profile.timeframes || [],
+                            status: profile.status || 'uploaded',
+                            source: 'uploaded_profile',
+                            profile_id: profile.id,
+                            created_at: profile.created_at,
+                            // Default performance values for uploaded profiles
+                            total_profit: profile.profile?.performance_stats?.total_profit || 0,
+                            total_trades: profile.profile?.performance_stats?.total_trades || 0,
+                            win_rate: profile.profile?.performance_stats?.win_rate || 0,
+                            max_drawdown: profile.profile?.performance_stats?.max_drawdown || 0,
+                            // Mark as uploaded profile
+                            is_uploaded_profile: true
+                        };
+                        mergedEAData.push(profileAsEA);
+                    } else {
+                        // Enhance existing EA with profile data
+                        existingEA.uploaded_profile = profile;
+                        existingEA.profile_id = profile.id;
+                        existingEA.has_profile = true;
+                    }
+                });
+                
+                // Store merged EA data for Profile modal use
+                lastEAData = mergedEAData;
+                window.lastEAData = mergedEAData;
+                
+                console.log(`✅ Stored ${lastEAData.length} EAs for profile use`);
+                
+                // Log Redis cache performance if available
+                if (eas.cache_performance) {
+                    console.log('🚀 Redis Cache Performance:', eas.cache_performance);
+                }
+                
+                updateEAList(mergedEAData);
+                updateEAChart(mergedEAData);
+                updateActivityMonitor(mergedEAData);
+                
+                // Update performance metrics
+                const duration = Date.now() - startTime;
+                lastUpdateTime = Date.now();
+                retryCount = 0; // Reset retry count on successful update
+                
+                console.log(`✅ EA data update completed in ${duration}ms`);
+                
+            } catch (error) {
+                console.error('❌ EA data update failed:', error);
+                
+                // Initialize empty data to prevent further errors
+                lastEAData = [];
+                window.lastEAData = [];
+                
+                // Implement retry logic
+                if (retryCount < MAX_RETRIES) {
+                    retryCount++;
+                    console.log(`🔄 Retrying EA data update (${retryCount}/${MAX_RETRIES}) in ${RETRY_DELAY}ms...`);
+                    showError(`EA data update failed. Retrying in ${RETRY_DELAY/1000}s... (${retryCount}/${MAX_RETRIES})`);
+                    setTimeout(() => updateEAData(), RETRY_DELAY);
+                } else {
+                    showError('EA data update failed after multiple attempts. Please refresh the page.');
+                    retryCount = 0; // Reset for next attempt
+                }
+            } finally {
+                isUpdating = false;
+            }
+        }
+
+        function updateEAList(eas) {
+            const eaListDiv = document.getElementById('ea-list');
+            const loadingDiv = document.getElementById('ea-loading');
+            const noEasDiv = document.getElementById('no-eas');
+            
+            // Hide loading indicator
+            if (loadingDiv) loadingDiv.style.display = 'none';
+            
+            if (!eas || eas.length === 0) {
+                // Show no EAs message
+                if (noEasDiv) noEasDiv.style.display = 'block';
+                return;
+            }
+            
+            // Hide no EAs message
+            if (noEasDiv) noEasDiv.style.display = 'none';
+            
+            // Generate EA cards
+            const eaCardsHTML = eas.map(ea => {
+                const statusColor = getStatusColor(ea.total_profit || 0);
+                const profitClass = (ea.total_profit || 0) >= 0 ? 'profit-positive' : 'profit-negative';
+                const winRate = ea.win_rate || 0;
+                const totalTrades = ea.total_trades || 0;
+                const avgTrade = ea.avg_trade || 0;
+                const maxDrawdown = ea.max_drawdown || 0;
+                
+                // Add indicators for uploaded profiles
+                const isUploadedProfile = ea.is_uploaded_profile || false;
+                const hasProfile = ea.has_profile || ea.uploaded_profile || false;
+                const profileIndicator = isUploadedProfile ? '📤' : (hasProfile ? '📋' : '');
+                const statusText = isUploadedProfile ? 'Uploaded' : (ea.status || 'Active');
+                
+                return `
+                    <div class="ea-card">
+                        <div class="ea-header">
+                            <div class="ea-title">
+                                <h4>${profileIndicator} ${ea.name || 'Unknown EA'}</h4>
+                                <span class="ea-magic">Magic: ${ea.magic_number || 'N/A'}</span>
+                            </div>
+                            <div class="ea-status">
+                                <span class="status-indicator" style="color: ${statusColor};">●</span>
+                                <span>${statusText}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="ea-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">Profit</span>
+                                <span class="stat-value ${profitClass}">$${(ea.total_profit || 0).toFixed(2)}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Trades</span>
+                                <span class="stat-value">${totalTrades}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Win Rate</span>
+                                <span class="stat-value">${winRate.toFixed(1)}%</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Avg Trade</span>
+                                <span class="stat-value">$${avgTrade.toFixed(2)}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Max DD</span>
+                                <span class="stat-value">${maxDrawdown.toFixed(1)}%</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Symbol</span>
+                                <span class="stat-value">${ea.symbol || 'Multiple'}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="ea-description">
+                            <small>${ea.description || `EA trading on ${ea.symbol || 'multiple symbols'}`}</small>
+                        </div>
+                        
+                        <div class="ea-controls">
+                            <button class="btn btn-sm btn-info" onclick="viewEADetails('${ea.name}')">📊 Details</button>
+                            <button class="btn btn-sm btn-primary" onclick="openEAProfile('${ea.name}')">🔧 Profile</button>
+                            ${isUploadedProfile ? 
+                                `<button class="btn btn-sm btn-success" onclick="startUploadedEA('${ea.profile_id}')">▶️ Start</button>` :
+                                `<button class="btn btn-sm btn-warning" onclick="pauseEA('${ea.name}')">⏸️ Pause</button>`
+                            }
+                            ${hasProfile ? 
+                                `<button class="btn btn-sm btn-info" onclick="viewEACode('${ea.profile_id}')">📜 Code</button>` : 
+                                ''
+                            }
+                            <button class="btn btn-sm btn-success" onclick="optimizeEA('${ea.name}')">🔧 Optimize</button>
+                            <button class="btn btn-sm btn-danger" onclick="removeEA('${ea.name}')">🗑️ Remove</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Update the EA list content
+            eaListDiv.innerHTML = eaCardsHTML + `
+                <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(51, 65, 85, 0.3); border-radius: 8px;">
+                    <h4 style="margin-bottom: 0.75rem;">Bulk Actions</h4>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <button class="btn btn-warning" onclick="pauseAllEAs()">⏸️ Pause All</button>
+                        <button class="btn btn-success" onclick="resumeAllEAs()">▶️ Resume All</button>
+                        <button class="btn btn-danger" onclick="stopAllEAs()">⏹️ Stop All</button>
+                        <button class="btn btn-info" onclick="optimizeAllEAs()">🔧 Optimize All</button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function getStatusColor(profit) {
+            if (profit > 0) return '#10b981'; // Green for profit
+            if (profit < 0) return '#ef4444'; // Red for loss
+            return '#f59e0b'; // Orange for neutral
+        }
+        
+        function updateEAChart(eas) {
+            if (!eas || eas.length === 0) return;
+            
+            // Prepare data for the chart
+            const labels = eas.map(ea => ea.name || 'Unknown');
+            const profits = eas.map(ea => ea.total_profit || 0);
+            const trades = eas.map(ea => ea.total_trades || 0);
+            const winRates = eas.map(ea => ea.win_rate || 0);
+            
+            // Generate colors based on profit
+            const backgroundColors = profits.map(profit => {
+                if (profit > 0) return 'rgba(16, 185, 129, 0.8)'; // Green
+                if (profit < 0) return 'rgba(239, 68, 68, 0.8)';  // Red
+                return 'rgba(249, 115, 22, 0.8)'; // Orange
+            });
+            
+            const borderColors = profits.map(profit => {
+                if (profit > 0) return '#10b981';
+                if (profit < 0) return '#ef4444';
+                return '#f97316';
+            });
+            
+            // Update chart data
+            performanceChart.data.labels = labels;
+            performanceChart.data.datasets[0].data = profits;
+            performanceChart.data.datasets[0].backgroundColor = backgroundColors;
+            performanceChart.data.datasets[0].borderColor = borderColors;
+            performanceChart.data.datasets[0].label = 'Total Profit ($)';
+            
+            performanceChart.update();
+        }
+        
+        function updateActivityMonitor(eas) {
+            const activityDiv = document.getElementById('activity-monitor');
+            if (!activityDiv || !eas || eas.length === 0) return;
+            
+            // Generate recent activity based on EA data
+            let activityHTML = '';
+            
+            eas.slice(0, 5).forEach((ea, index) => {
+                const statusColor = getStatusColor(ea.total_profit || 0);
+                const timeAgo = `${(index + 1) * 5} minutes ago`;
+                const action = ea.total_profit > 0 ? 'Profitable trade' : 
+                             ea.total_profit < 0 ? 'Loss recorded' : 'No recent activity';
+                
+                activityHTML += `
+                    <div style="padding: 0.75rem; background: rgba(51, 65, 85, 0.3); border-radius: 6px; margin-bottom: 0.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span style="color: ${statusColor};">●</span>
+                                <span style="margin-left: 0.5rem;">${ea.name || 'Unknown EA'}</span>
+                            </div>
+                            <span style="font-size: 0.8rem; color: #94a3b8;">${action}</span>
+                        </div>
+                        <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">${timeAgo}</div>
+                    </div>
+                `;
+            });
+            
+            if (activityHTML === '') {
+                activityHTML = `
+                    <div style="text-align: center; padding: 2rem; color: #94a3b8;">
+                        <div style="font-size: 1rem; margin-bottom: 0.5rem;">📊 No Recent Activity</div>
+                        <div style="font-size: 0.8rem;">EA activity will appear here</div>
+                    </div>
+                `;
+            }
+            
+            activityDiv.innerHTML = activityHTML;
+        }
+
+        // Enhanced error handling and debugging
+        window.addEventListener('error', function(event) {
+            console.error('Global JavaScript error:', event.error);
+            showError(`JavaScript error: ${event.error.message}`);
+        });
+
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('Unhandled promise rejection:', event.reason);
+            showError(`Promise rejection: ${event.reason}`);
+        });
+
+        // Update loading progress
+        function updateLoadingProgress(message) {
+            const progressElement = document.getElementById('loading-progress');
+            if (progressElement) {
+                progressElement.textContent = message;
+            }
+        }
+
+        // Hide loading overlay
+        function hideLoadingOverlay() {
+            const overlay = document.getElementById('page-loading-overlay');
+            if (overlay) {
+                overlay.style.opacity = '0';
+                overlay.style.transition = 'opacity 0.5s ease-out';
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                }, 500);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                updateLoadingProgress('DOM loaded, initializing...');
+                
+                console.log('🚀 EA Management page initialized');
+                console.log('DOM ready state:', document.readyState);
+                console.log('Window location:', window.location.href);
+                
+                updateLoadingProgress('Checking required elements...');
+                
+                // Check if required elements exist
+                const requiredElements = [
+                    'ea-list', 'ea-performance-chart', 'ea-profile-modal',
+                    'loading-indicator', 'error-message'
+                ];
+                
+                for (const elementId of requiredElements) {
+                    const element = document.getElementById(elementId);
+                    if (!element) {
+                        console.error(`❌ Required element missing: ${elementId}`);
+                        showError(`Required element missing: ${elementId}`);
+                    } else {
+                        console.log(`✅ Element found: ${elementId}`);
+                    }
+                }
+                
+                updateLoadingProgress('Loading EA data...');
+                
+                // Load initial EA data
+                console.log('Loading initial EA data...');
+                updateEAData();
+                
+                updateLoadingProgress('Loading AI suggestions...');
+                
+                // Load AI suggestions
+                console.log('Loading AI suggestions...');
+                updateAISuggestions();
+                
+                // Set up periodic updates every 15 seconds for EA data
+                setInterval(updateEAData, 15000);
+                
+                // Set up periodic updates every 2 minutes for AI suggestions
+                setInterval(updateAISuggestions, 120000);
+                
+                // Set up real-time updates via WebSocket
+                if (typeof io !== 'undefined') {
+                    console.log('Setting up WebSocket connection...');
+                    try {
+                        const socket = io();
+                        socket.on('ea_update', function(data) {
+                            console.log('WebSocket EA update received');
+                            updateEAData();
+                        });
+                        socket.on('trade_update', function(data) {
+                            console.log('WebSocket trade update received');
+                            updateEAData(); // Update EA data when trades change
+                        });
+                        console.log('✅ WebSocket setup complete');
+                    } catch (wsError) {
+                        console.warn('WebSocket setup failed:', wsError);
+                    }
+                } else {
+                    console.warn('Socket.IO not available, skipping WebSocket setup');
+                }
+                
+                // Add keyboard support for modal
+                document.addEventListener('keydown', function(event) {
+                    if (event.key === 'Escape') {
+                        const modal = document.getElementById('ea-profile-modal');
+                        if (modal && modal.style.display === 'block') {
+                            closeEAProfile();
+                        }
+                    }
+                });
+                
+                // Add click outside modal to close
+                document.addEventListener('click', function(event) {
+                    const modal = document.getElementById('ea-profile-modal');
+                    if (modal && modal.style.display === 'block' && event.target === modal) {
+                        closeEAProfile();
+                    }
+                });
+                
+                console.log('✅ Event listeners setup complete');
+                console.log('✅ EA Management page initialization complete');
+                
+                updateLoadingProgress('Initialization complete!');
+                
+                // Hide loading overlay after a short delay
+                setTimeout(() => {
+                    hideLoadingOverlay();
+                }, 1000);
+                
+            } catch (initError) {
+                console.error('❌ Error during page initialization:', initError);
+                showError(`Initialization failed: ${initError.message}`);
+                updateLoadingProgress(`Error: ${initError.message}`);
+                
+                // Hide loading overlay even on error
+                setTimeout(() => {
+                    hideLoadingOverlay();
+                }, 2000);
+            }
+        });
+
+        // Also hide loading overlay when window is fully loaded
+        window.addEventListener('load', function() {
+            updateLoadingProgress('Page fully loaded');
+            setTimeout(() => {
+                hideLoadingOverlay();
+            }, 500);
+        });
+
+        // Update timestamp function to show last updated time
+        function updateTimestamp() {
+            const now = new Date();
+            const timestamp = now.toLocaleString();
+            // Update any timestamp elements if they exist
+            const timestampElements = document.querySelectorAll('.last-updated');
+            timestampElements.forEach(el => {
+                el.textContent = `Last updated: ${timestamp}`;
+            });
+        }
+
+        updateTimestamp();
+        setInterval(updateTimestamp, 1000);
+
+        // EA Profile Management JavaScript - Initialize all variables at the top
+        // Use window object to ensure global scope and immediate availability
+        window.currentEAProfile = null;
+        window.lastEAData = []; // Store the latest EA data for profile loading
+        window.profileIndicators = [];
+        window.profileEntryConditions = [];
+        window.profileExitConditions = [];
+        
+        // Create local references for convenience
+        var currentEAProfile = window.currentEAProfile;
+        var lastEAData = window.lastEAData;
+        var profileIndicators = window.profileIndicators;
+        var profileEntryConditions = window.profileEntryConditions;
+        var profileExitConditions = window.profileExitConditions;
+
+        // Profile Modal Management
+        function openEAProfile(eaName) {
+            try {
+                console.log(`🔧 Opening EA Profile for: ${eaName}`);
+                console.log('🔍 Current variables state:', {
+                    currentEAProfile: window.currentEAProfile,
+                    lastEAData: window.lastEAData ? window.lastEAData.length : 'undefined',
+                    eaName: eaName
+                });
+                
+                if (!eaName) {
+                    console.error('❌ No EA name provided to openEAProfile');
+                    showError('Cannot open profile: No EA name provided');
+                    return;
+                }
+                
+                // Use window object for consistency
+                window.currentEAProfile = eaName;
+                currentEAProfile = window.currentEAProfile;
+                
+                // Find and show the modal
+                const modal = document.getElementById('ea-profile-modal');
+                if (!modal) {
+                    console.error('❌ Profile modal element not found');
+                    showError('Profile modal not found. Please refresh the page.');
+                    return;
+                }
+                
+                modal.style.display = 'block';
+                
+                // Update modal title
+                const profileTitle = document.getElementById('profile-ea-name');
+                if (profileTitle) {
+                    profileTitle.textContent = `${eaName} Profile`;
+                }
+                
+                // Load existing profile data
+                loadEAProfile(eaName);
+                
+                // Switch to overview tab
+                switchProfileTab('overview');
+                
+                console.log(`✅ EA Profile modal opened for: ${eaName}`);
+                
+            } catch (error) {
+                console.error('❌ Error opening EA Profile:', error);
+                showError(`Failed to open EA Profile: ${error.message}`);
+            }
+        }
+
+        function closeEAProfile() {
+            try {
+                console.log('🔽 Closing EA Profile modal');
+                
+                const modal = document.getElementById('ea-profile-modal');
+                if (modal) {
+                    modal.style.display = 'none';
+                } else {
+                    console.warn('⚠️ Profile modal element not found when closing');
+                }
+                
+                currentEAProfile = null;
+                window.currentEAProfile = null;
+                resetProfileData();
+                
+                console.log('✅ EA Profile modal closed');
+                
+            } catch (error) {
+                console.error('❌ Error closing EA Profile modal:', error);
+            }
+        }
+
+        function switchProfileTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.profile-tab').forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.getAttribute('data-tab') === tabName) {
+                    tab.classList.add('active');
+                }
+            });
+
+            // Update tab content
+            document.querySelectorAll('.profile-tab-content').forEach(content => {
+                content.style.display = 'none';
+            });
+            
+            const targetTab = document.getElementById(`tab-${tabName}`);
+            if (targetTab) {
+                targetTab.style.display = 'block';
+            }
+
+            // Load specific tab data
+            if (tabName === 'indicators') {
+                updateIndicatorsList();
+            } else if (tabName === 'conditions') {
+                updateConditionsList();
+            } else if (tabName === 'optimization') {
+                loadOptimizationRecommendations();
+            }
+        }
+
+        // Load EA Profile Data
+        async function loadEAProfile(eaName) {
+            try {
+                console.log(`🔄 Loading EA profile for: ${eaName}`);
+                const response = await fetch(`/api/eas/${eaName}/profile`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ Profile data received:', data);
+                    populateProfileForm(data.profile);
+                    
+                    if (data.recommendations) {
+                        displayOptimizationRecommendations(data.recommendations);
+                    }
+                } else {
+                    console.log('ℹ️ No existing profile found, loading basic EA data');
+                    // No existing profile, load basic EA data
+                    loadBasicEAData(eaName);
+                }
+            } catch (error) {
+                console.error('❌ Error loading EA profile:', error);
+                loadBasicEAData(eaName);
+            }
+        }
+
+        function loadBasicEAData(eaName) {
+            try {
+                console.log(`Loading basic EA data for: ${eaName}`);
+                console.log('Available EA data:', window.lastEAData);
+                console.log('Local EA data reference:', lastEAData);
+                
+                // Use window object for reliable access
+                const currentEAData = window.lastEAData || [];
+                
+                // Find EA in current data and populate basic fields
+                const eaData = currentEAData && currentEAData.find ? currentEAData.find(ea => ea.name === eaName) : null;
+                
+                if (eaData) {
+                    console.log('Found EA data:', eaData);
+                    
+                    // Safely update form fields
+                    const setFieldValue = (id, value) => {
+                        const element = document.getElementById(id);
+                        if (element) {
+                            element.value = value || '';
+                        } else {
+                            console.warn(`Element not found: ${id}`);
+                        }
+                    };
+                    
+                    const setTextContent = (id, value) => {
+                        const element = document.getElementById(id);
+                        if (element) {
+                            element.textContent = value || '0';
+                        } else {
+                            console.warn(`Element not found: ${id}`);
+                        }
+                    };
+                    
+                    setFieldValue('profile-name', eaData.name);
+                    setFieldValue('profile-magic', eaData.magic_number);
+                    setFieldValue('profile-symbol', eaData.symbol || 'EURUSD');
+                    setFieldValue('profile-description', eaData.description);
+                    
+                    // Update performance metrics
+                    setTextContent('perf-trades', eaData.total_trades);
+                    setTextContent('perf-winrate', `${eaData.win_rate || 0}%`);
+                    setTextContent('perf-profit-factor', eaData.profit_factor || '0.00');
+                    setTextContent('perf-drawdown', `${eaData.max_drawdown || 0}%`);
+                    
+                    console.log('✅ Basic EA data loaded successfully');
+                } else {
+                    console.warn(`⚠️ No EA data found for: ${eaName}`);
+                    console.log('Available EAs:', currentEAData ? currentEAData.map(ea => ea.name) : 'No data');
+                    console.log('Attempting to load EA data...');
+                    // Try to refresh EA data if none available
+                    if (!currentEAData || currentEAData.length === 0) {
+                        updateEAData();
+                        showNotification('Loading EA data...', 'info');
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Error loading basic EA data:', error);
+            }
+        }
+
+        function populateProfileForm(profile) {
+            if (!profile) return;
+
+            // Basic information
+            document.getElementById('profile-name').value = profile.name || '';
+            document.getElementById('profile-magic').value = profile.magic_number || '';
+            document.getElementById('profile-symbol').value = profile.symbol || 'EURUSD';
+            document.getElementById('profile-description').value = profile.description || '';
+
+            // EA Characteristics
+            document.getElementById('profile-grid').checked = profile.characteristics?.is_grid_based || false;
+            document.getElementById('profile-martingale').checked = profile.characteristics?.is_martingale || false;
+            document.getElementById('profile-hedging').checked = profile.characteristics?.uses_hedging || false;
+            document.getElementById('profile-news').checked = profile.characteristics?.is_news_sensitive || false;
+            document.getElementById('profile-lowspread').checked = profile.characteristics?.requires_low_spread || false;
+
+            // Strategy
+            document.getElementById('profile-strategy-type').value = profile.strategy_type || 'unknown';
+            document.getElementById('profile-timeframe').value = profile.timeframe || 'M15';
+            document.getElementById('profile-multi-timeframe').checked = profile.multi_timeframe || false;
+
+            // Update confidence score
+            const confidence = Math.round((profile.confidence_score || 0.5) * 100);
+            document.getElementById('profile-confidence').textContent = `${confidence}%`;
+            document.getElementById('profile-confidence').style.color = 
+                confidence > 70 ? '#10b981' : confidence > 40 ? '#f59e0b' : '#ef4444';
+
+            // Populate indicators
+            populateIndicators(profile.indicators || []);
+        }
+
+        // Indicators Management
+        function populateIndicators(indicators) {
+            try {
+                console.log('Populating indicators:', indicators);
+                
+                // Clear existing indicators
+                const indicatorsList = document.getElementById('indicators-list');
+                if (!indicatorsList) {
+                    console.warn('indicators-list element not found');
+                    return;
+                }
+                
+                // Remove all existing indicator items
+                const existingItems = indicatorsList.querySelectorAll('.indicator-item');
+                existingItems.forEach(item => item.remove());
+                
+                // Add indicators from profile
+                if (indicators && indicators.length > 0) {
+                    indicators.forEach(indicator => {
+                        addIndicatorFromProfile(indicator);
+                    });
+                } else {
+                    console.log('No indicators found in profile');
+                }
+                
+                // Update the indicators list display
+                updateIndicatorsList();
+                
+            } catch (error) {
+                console.error('Error populating indicators:', error);
+            }
+        }
+
+        function addIndicatorFromProfile(indicatorName) {
+            try {
+                // Map indicator names to select values
+                const indicatorMap = {
+                    'Moving Average': 'moving_average',
+                    'RSI': 'rsi',
+                    'MACD': 'macd',
+                    'Stochastic': 'stochastic',
+                    'Bollinger Bands': 'bollinger_bands',
+                    'ATR': 'atr',
+                    'CCI': 'cci',
+                    'Williams %R': 'williams_r',
+                    'Momentum': 'momentum',
+                    'Rate of Change': 'roc',
+                    'ADX': 'adx',
+                    'Parabolic SAR': 'parabolic_sar',
+                    'Ichimoku': 'ichimoku',
+                    'Fibonacci': 'fibonacci',
+                    'Pivot Points': 'pivot_points',
+                    'Volume': 'volume',
+                    'On Balance Volume': 'volume',
+                    'Bears Power': 'custom',
+                    'Bulls Power': 'custom',
+                    'Force Index': 'custom',
+                    'Accumulation/Distribution': 'custom',
+                    'Money Flow Index': 'custom',
+                    'Commodity Channel Index': 'cci',
+                    'Relative Strength Index': 'rsi',
+                    'Stochastic Oscillator': 'stochastic',
+                    'Williams Percent Range': 'williams_r',
+                    'Average Directional Index': 'adx',
+                    'Average True Range': 'atr',
+                    'Exponential Moving Average': 'moving_average',
+                    'Simple Moving Average': 'moving_average',
+                    'Weighted Moving Average': 'moving_average',
+                    'Smoothed Moving Average': 'moving_average'
+                };
+                
+                const mappedValue = indicatorMap[indicatorName] || 'custom';
+                
+                const indicatorHtml = `
+                    <div class="indicator-item">
+                        <button class="remove-item" onclick="removeIndicator(this)">×</button>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.9rem;">Indicator</label>
+                                <select class="indicator-type" style="width: 100%; padding: 0.5rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9; font-size: 0.9rem;">
+                                    <option value="moving_average" ${mappedValue === 'moving_average' ? 'selected' : ''}>Moving Average</option>
+                                    <option value="rsi" ${mappedValue === 'rsi' ? 'selected' : ''}>RSI</option>
+                                    <option value="macd" ${mappedValue === 'macd' ? 'selected' : ''}>MACD</option>
+                                    <option value="stochastic" ${mappedValue === 'stochastic' ? 'selected' : ''}>Stochastic</option>
+                                    <option value="bollinger_bands" ${mappedValue === 'bollinger_bands' ? 'selected' : ''}>Bollinger Bands</option>
+                                    <option value="atr" ${mappedValue === 'atr' ? 'selected' : ''}>ATR</option>
+                                    <option value="cci" ${mappedValue === 'cci' ? 'selected' : ''}>CCI</option>
+                                    <option value="williams_r" ${mappedValue === 'williams_r' ? 'selected' : ''}>Williams %R</option>
+                                    <option value="momentum" ${mappedValue === 'momentum' ? 'selected' : ''}>Momentum</option>
+                                    <option value="roc" ${mappedValue === 'roc' ? 'selected' : ''}>Rate of Change</option>
+                                    <option value="adx" ${mappedValue === 'adx' ? 'selected' : ''}>ADX</option>
+                                    <option value="parabolic_sar" ${mappedValue === 'parabolic_sar' ? 'selected' : ''}>Parabolic SAR</option>
+                                    <option value="ichimoku" ${mappedValue === 'ichimoku' ? 'selected' : ''}>Ichimoku</option>
+                                    <option value="fibonacci" ${mappedValue === 'fibonacci' ? 'selected' : ''}>Fibonacci</option>
+                                    <option value="pivot_points" ${mappedValue === 'pivot_points' ? 'selected' : ''}>Pivot Points</option>
+                                    <option value="volume" ${mappedValue === 'volume' ? 'selected' : ''}>Volume</option>
+                                    <option value="custom" ${mappedValue === 'custom' ? 'selected' : ''}>Custom Indicator</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.9rem;">Timeframe</label>
+                                <select class="indicator-timeframe" style="width: 100%; padding: 0.5rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9; font-size: 0.9rem;">
+                                    <option value="M1">M1</option>
+                                    <option value="M5">M5</option>
+                                    <option value="M15" selected>M15</option>
+                                    <option value="M30">M30</option>
+                                    <option value="H1">H1</option>
+                                    <option value="H4">H4</option>
+                                    <option value="D1">D1</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.9rem;">Weight</label>
+                                <input type="number" class="indicator-weight" min="0.1" max="2.0" step="0.1" value="1.0" style="width: 100%; padding: 0.5rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9; font-size: 0.9rem;">
+                            </div>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.9rem;">Parameters (JSON format)</label>
+                            <textarea class="indicator-params" placeholder='{"period": 14, "method": "EMA"}' style="width: 100%; padding: 0.5rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9; resize: vertical; height: 60px; font-size: 0.9rem;">${mappedValue === 'custom' ? JSON.stringify({"name": indicatorName}) : ''}</textarea>
+                        </div>
+                    </div>
+                `;
+                
+                const container = document.getElementById('indicators-list');
+                container.insertAdjacentHTML('beforeend', indicatorHtml);
+                
+                console.log(`Added indicator: ${indicatorName} (mapped to: ${mappedValue})`);
+                
+            } catch (error) {
+                console.error('Error adding indicator from profile:', error);
+            }
+        }
+
+        function addIndicator() {
+            const indicatorHtml = `
+                <div class="indicator-item">
+                    <button class="remove-item" onclick="removeIndicator(this)">×</button>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.9rem;">Indicator</label>
+                            <select class="indicator-type" style="width: 100%; padding: 0.5rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9; font-size: 0.9rem;">
+                                <option value="moving_average">Moving Average</option>
+                                <option value="rsi">RSI</option>
+                                <option value="macd">MACD</option>
+                                <option value="stochastic">Stochastic</option>
+                                <option value="bollinger_bands">Bollinger Bands</option>
+                                <option value="atr">ATR</option>
+                                <option value="cci">CCI</option>
+                                <option value="williams_r">Williams %R</option>
+                                <option value="momentum">Momentum</option>
+                                <option value="roc">Rate of Change</option>
+                                <option value="adx">ADX</option>
+                                <option value="parabolic_sar">Parabolic SAR</option>
+                                <option value="ichimoku">Ichimoku</option>
+                                <option value="fibonacci">Fibonacci</option>
+                                <option value="pivot_points">Pivot Points</option>
+                                <option value="volume">Volume</option>
+                                <option value="custom">Custom Indicator</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.9rem;">Timeframe</label>
+                            <select class="indicator-timeframe" style="width: 100%; padding: 0.5rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9; font-size: 0.9rem;">
+                                <option value="M1">M1</option>
+                                <option value="M5">M5</option>
+                                <option value="M15" selected>M15</option>
+                                <option value="M30">M30</option>
+                                <option value="H1">H1</option>
+                                <option value="H4">H4</option>
+                                <option value="D1">D1</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.9rem;">Weight</label>
+                            <input type="number" class="indicator-weight" min="0.1" max="2.0" step="0.1" value="1.0" style="width: 100%; padding: 0.5rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9; font-size: 0.9rem;">
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.9rem;">Parameters (JSON format)</label>
+                        <textarea class="indicator-params" placeholder='{"period": 14, "method": "EMA"}' style="width: 100%; padding: 0.5rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9; resize: vertical; height: 60px; font-size: 0.9rem;"></textarea>
+                    </div>
+                </div>
+            `;
+            
+            const container = document.getElementById('indicators-list');
+            container.insertAdjacentHTML('beforeend', indicatorHtml);
+            
+            updateIndicatorsList();
+        }
+
+        function removeIndicator(button) {
+            button.parentElement.remove();
+            updateIndicatorsList();
+        }
+
+        function updateIndicatorsList() {
+            const indicators = document.querySelectorAll('.indicator-item');
+            const noIndicators = document.getElementById('no-indicators');
+            
+            if (indicators.length === 0) {
+                noIndicators.style.display = 'block';
+            } else {
+                noIndicators.style.display = 'none';
+            }
+        }
+
+        // Trading Conditions Management
+        function addEntryCondition() {
+            const conditionHtml = `
+                <div class="condition-item">
+                    <button class="remove-item" onclick="removeCondition(this)">×</button>
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.9rem;">Condition Type</label>
+                        <select class="condition-type" style="width: 100%; padding: 0.5rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9; font-size: 0.9rem;">
+                            <option value="indicator_cross">Indicator Crossover</option>
+                            <option value="price_level">Price Level Break</option>
+                            <option value="pattern">Chart Pattern</option>
+                            <option value="time_filter">Time Filter</option>
+                            <option value="volatility">Volatility Condition</option>
+                            <option value="spread">Spread Condition</option>
+                            <option value="custom">Custom Logic</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.9rem;">Condition Description</label>
+                        <textarea class="condition-desc" placeholder="Describe the entry condition..." style="width: 100%; padding: 0.5rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9; resize: vertical; height: 60px; font-size: 0.9rem;"></textarea>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('entry-conditions-list').insertAdjacentHTML('beforeend', conditionHtml);
+            updateConditionsList();
+        }
+
+        function addExitCondition() {
+            const conditionHtml = `
+                <div class="condition-item">
+                    <button class="remove-item" onclick="removeCondition(this)">×</button>
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.9rem;">Exit Type</label>
+                        <select class="exit-type" style="width: 100%; padding: 0.5rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9; font-size: 0.9rem;">
+                            <option value="stop_loss">Stop Loss</option>
+                            <option value="take_profit">Take Profit</option>
+                            <option value="trailing_stop">Trailing Stop</option>
+                            <option value="time_exit">Time-based Exit</option>
+                            <option value="indicator_exit">Indicator Exit</option>
+                            <option value="partial_close">Partial Close</option>
+                            <option value="breakeven">Break-even</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.9rem;">Exit Description</label>
+                        <textarea class="exit-desc" placeholder="Describe the exit condition..." style="width: 100%; padding: 0.5rem; border: 1px solid #475569; border-radius: 6px; background: #334155; color: #f1f5f9; resize: vertical; height: 60px; font-size: 0.9rem;"></textarea>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('exit-conditions-list').insertAdjacentHTML('beforeend', conditionHtml);
+            updateConditionsList();
+        }
+
+        function removeCondition(button) {
+            button.parentElement.remove();
+            updateConditionsList();
+        }
+
+        function updateConditionsList() {
+            const entryConditions = document.querySelectorAll('#entry-conditions-list .condition-item');
+            const exitConditions = document.querySelectorAll('#exit-conditions-list .condition-item');
+            
+            document.getElementById('no-entry-conditions').style.display = 
+                entryConditions.length === 0 ? 'block' : 'none';
+            document.getElementById('no-exit-conditions').style.display = 
+                exitConditions.length === 0 ? 'block' : 'none';
+        }
+
+        // Optimization Recommendations
+        async function loadOptimizationRecommendations() {
+            try {
+                const response = await fetch(`/api/eas/${currentEAProfile}/profile`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.recommendations) {
+                        displayOptimizationRecommendations(data.recommendations);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading recommendations:', error);
+            }
+        }
+
+        function displayOptimizationRecommendations(recommendations) {
+            const container = document.getElementById('optimization-recommendations');
+            
+            if (!recommendations || recommendations.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: #94a3b8; background: rgba(51, 65, 85, 0.3); border-radius: 8px;">
+                        <div>No optimization recommendations available</div>
+                        <div style="font-size: 0.9rem; margin-top: 0.5rem;">Save the profile to generate AI-powered recommendations</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = recommendations.map(rec => `
+                <div class="recommendation-card urgency-${rec.urgency || 'medium'}">
+                    <div class="recommendation-header">
+                        <h5 style="margin: 0; color: #8b5cf6;">${rec.title || 'Optimization Suggestion'}</h5>
+                        <span style="background: rgba(139, 92, 246, 0.2); color: #8b5cf6; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">
+                            ${rec.urgency || 'medium'} priority
+                        </span>
+                    </div>
+                    <div style="color: #e2e8f0; margin-bottom: 1rem;">${rec.description || 'No description available'}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: #94a3b8; font-size: 0.9rem;">
+                            Expected improvement: ${rec.expected_improvement || 'Unknown'}
+                        </span>
+                        <button class="btn btn-sm btn-primary" onclick="applyRecommendation('${rec.id}')">Apply</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function applyRecommendation(recId) {
+            console.log(`Applying recommendation: ${recId}`);
+            // Implementation for applying specific recommendations
+        }
+
+        // Profile Actions
+        function resetProfile() {
+            if (confirm('Reset all profile data? This will clear all unsaved changes.')) {
+                resetProfileData();
+                loadBasicEAData(currentEAProfile);
+            }
+        }
+
+        function resetProfileData() {
+            // Clear all form fields
+            document.querySelectorAll('#ea-profile-modal input, #ea-profile-modal select, #ea-profile-modal textarea').forEach(input => {
+                if (input.type === 'checkbox') {
+                    input.checked = false;
+                } else {
+                    input.value = '';
+                }
+            });
+
+            // Clear dynamic lists
+            document.getElementById('indicators-list').innerHTML = '';
+            document.getElementById('entry-conditions-list').innerHTML = '';
+            document.getElementById('exit-conditions-list').innerHTML = '';
+            
+            profileIndicators = [];
+            profileEntryConditions = [];
+            profileExitConditions = [];
+
+            updateIndicatorsList();
+            updateConditionsList();
+        }
+
+        async function autoDetectProfile() {
+            if (!window.currentEAProfile) return;
+
+            try {
+                console.log(`🔍 Auto-detecting profile for ${window.currentEAProfile}...`);
+                
+                // Show loading state
+                const button = event.target;
+                const originalText = button.textContent;
+                button.textContent = '🔍 Detecting...';
+                button.disabled = true;
+
+                // Call AI analysis endpoint
+                const response = await fetch('/api/eas/intelligence');
+                if (response.ok) {
+                    const data = await response.json();
+                    const eaProfile = data.profiles[window.currentEAProfile];
+                    
+                    if (eaProfile) {
+                        populateProfileForm(eaProfile);
+                        showNotification('✅ Profile auto-detected successfully!', 'success');
+                        
+                        // Update confidence
+                        const confidence = Math.round((eaProfile.confidence_score || 0.8) * 100);
+                        document.getElementById('profile-confidence').textContent = `${confidence}%`;
+                    } else {
+                        showNotification('⚠️ Could not auto-detect profile for this EA', 'warning');
+                    }
+                } else {
+                    throw new Error('Failed to auto-detect profile');
+                }
+
+                // Restore button
+                button.textContent = originalText;
+                button.disabled = false;
+
+            } catch (error) {
+                console.error('Error auto-detecting profile:', error);
+                showNotification('❌ Failed to auto-detect profile', 'error');
+                
+                // Restore button
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        }
+
+        async function saveEAProfile() {
+            if (!window.currentEAProfile) return;
+
+            try {
+                console.log(`💾 Saving profile for ${window.currentEAProfile}...`);
+
+                // Collect all profile data
+                const profileData = {
+                    name: document.getElementById('profile-name').value,
+                    magic_number: parseInt(document.getElementById('profile-magic').value) || 0,
+                    symbol: document.getElementById('profile-symbol').value,
+                    description: document.getElementById('profile-description').value,
+                    strategy_type: document.getElementById('profile-strategy-type').value,
+                    
+                    // Characteristics
+                    is_grid_based: document.getElementById('profile-grid').checked,
+                    is_martingale: document.getElementById('profile-martingale').checked,
+                    uses_hedging: document.getElementById('profile-hedging').checked,
+                    is_news_sensitive: document.getElementById('profile-news').checked,
+                    requires_low_spread: document.getElementById('profile-lowspread').checked,
+                    
+                    // Strategy
+                    timeframe: document.getElementById('profile-timeframe').value,
+                    multi_timeframe: document.getElementById('profile-multi-timeframe').checked,
+                    
+                    // Market sessions
+                    market_sessions: [
+                        document.getElementById('session-london').checked ? 'london' : null,
+                        document.getElementById('session-newyork').checked ? 'new_york' : null,
+                        document.getElementById('session-tokyo').checked ? 'tokyo' : null,
+                        document.getElementById('session-sydney').checked ? 'sydney' : null
+                    ].filter(Boolean),
+                    
+                    // Market conditions
+                    best_market_conditions: [
+                        document.getElementById('condition-trending').checked ? 'trending' : null,
+                        document.getElementById('condition-ranging').checked ? 'ranging' : null,
+                        document.getElementById('condition-volatile').checked ? 'volatile' : null,
+                        document.getElementById('condition-lowvol').checked ? 'low_volatility' : null
+                    ].filter(Boolean),
+                    
+                    // Indicators
+                    indicators: collectIndicators(),
+                    
+                    // Risk management
+                    risk_management: {
+                        lot_sizing_method: document.getElementById('risk-lot-method').value,
+                        lot_size: parseFloat(document.getElementById('risk-lot-size').value) || 0.01,
+                        max_risk_per_trade: parseFloat(document.getElementById('risk-per-trade').value) / 100 || 0.02,
+                        max_open_trades: parseInt(document.getElementById('risk-max-trades').value) || 1,
+                        max_drawdown_limit: parseFloat(document.getElementById('risk-max-drawdown').value) / 100 || 0.20
+                    },
+                    
+                    // Optimization
+                    strengths: document.getElementById('optimization-strengths').value.split(',').map(s => s.trim()).filter(Boolean),
+                    weaknesses: document.getElementById('optimization-weaknesses').value.split(',').map(s => s.trim()).filter(Boolean),
+                    
+                    confidence_score: 0.9 // High confidence for manual profiles
+                };
+
+                // Save to backend
+                const response = await fetch('/api/eas/profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(profileData)
+                });
+
+                if (response.ok) {
+                    showNotification('✅ EA Profile saved successfully!', 'success');
+                    
+                    // Update confidence display
+                    document.getElementById('profile-confidence').textContent = '90%';
+                    document.getElementById('profile-confidence').style.color = '#10b981';
+                    
+                    // Refresh EA list to show updated profile status
+                    setTimeout(() => {
+                        updateEAData();
+                    }, 1000);
+                } else {
+                    throw new Error('Failed to save profile');
+                }
+
+            } catch (error) {
+                console.error('Error saving EA profile:', error);
+                showNotification('❌ Failed to save EA profile', 'error');
+            }
+        }
+
+        function collectIndicators() {
+            const indicators = [];
+            document.querySelectorAll('.indicator-item').forEach(item => {
+                try {
+                    const indicator = {
+                        name: item.querySelector('.indicator-type').value,
+                        type: item.querySelector('.indicator-type').value,
+                        timeframe: item.querySelector('.indicator-timeframe').value,
+                        weight: parseFloat(item.querySelector('.indicator-weight').value) || 1.0,
+                        parameters: {}
+                    };
+                    
+                    // Parse parameters JSON
+                    const paramsText = item.querySelector('.indicator-params').value;
+                    if (paramsText) {
+                        indicator.parameters = JSON.parse(paramsText);
+                    }
+                    
+                    indicators.push(indicator);
+                } catch (error) {
+                    console.warn('Error parsing indicator:', error);
+                }
+            });
+            return indicators;
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('ea-profile-modal');
+            if (event.target === modal) {
+                closeEAProfile();
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && document.getElementById('ea-profile-modal').style.display === 'block') {
+                closeEAProfile();
+            }
+        });
+
+        // Test Debug Functions
+        function testProfileSystem() {
+            console.log('🧪 Testing Profile System...');
+            console.log('Current EA Profile (window):', window.currentEAProfile);
+            console.log('Current EA Profile (local):', currentEAProfile);
+            console.log('Last EA Data (window):', window.lastEAData);
+            console.log('Last EA Data (local):', lastEAData);
+            console.log('Available EAs:', window.lastEAData ? window.lastEAData.map(ea => ea.name) : 'No data');
+            
+            // Test modal elements
+            const modal = document.getElementById('ea-profile-modal');
+            console.log('Profile modal element:', modal ? 'Found' : 'Missing');
+            
+            // Test opening profile for first EA
+            if (window.lastEAData && window.lastEAData.length > 0) {
+                const firstEA = window.lastEAData[0];
+                console.log('Testing with first EA:', firstEA.name);
+                openEAProfile(firstEA.name);
+            } else {
+                console.warn('No EA data available for testing');
+                showNotification('No EA data available for testing', 'warning');
+                
+                // Try to load EA data first
+                console.log('Attempting to load EA data...');
+                updateEAData().then(() => {
+                    console.log('EA data loaded, retrying test...');
+                    if (window.lastEAData && window.lastEAData.length > 0) {
+                        const firstEA = window.lastEAData[0];
+                        console.log('Now testing with first EA:', firstEA.name);
+                        openEAProfile(firstEA.name);
+                    }
+                });
+            }
+        }
+        
+        // Add a simple test EA for debugging
+        function addTestEA() {
+            const testEA = {
+                name: 'TestEA_Debug',
+                magic_number: 12345,
+                symbol: 'EURUSD',
+                description: 'Test EA for debugging Profile functionality',
+                total_trades: 10,
+                win_rate: 65.5,
+                profit_factor: 1.25,
+                max_drawdown: 8.5,
+                total_profit: 150.75
+            };
+            
+            if (!window.lastEAData) {
+                window.lastEAData = [];
+            }
+            
+            window.lastEAData.push(testEA);
+            
+            // Update local reference
+            lastEAData = window.lastEAData;
+            
+            console.log('✅ Test EA added:', testEA);
+            console.log('Updated EA data:', window.lastEAData);
+            showNotification('Test EA added for debugging', 'success');
+            
+            // Update the display
+            updateEAList(window.lastEAData);
+        }
+
+        // Force Trade Synchronization with MT5
+        function forceSyncTrades() {
+            console.log('🔄 Force sync requested...');
+            showNotification('Syncing with MT5...', 'info');
+            
+            fetch('/api/system/force-sync', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('✅ Force sync successful:', data.message);
+                    showNotification(data.message, 'success');
+                    
+                    // Refresh EA data after sync
+                    updateEAData();
+                    
+                    // Also refresh any dashboard data
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                    
+                } else {
+                    console.error('❌ Force sync failed:', data.message);
+                    showNotification('Force sync failed: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('❌ Force sync error:', error);
+                showNotification('Force sync error: ' + error.message, 'error');
+            });
+        }
+        
+        // Expose functions globally for debugging
+        window.testProfileSystem = testProfileSystem;
+        window.addTestEA = addTestEA;
+        window.openEAProfile = openEAProfile;
+        window.closeEAProfile = closeEAProfile;
+        window.updateEAData = updateEAData;
+        window.forceSyncTrades = forceSyncTrades;
+        
+        // Ensure variables are properly initialized on window object
+        if (!window.lastEAData) window.lastEAData = [];
+        if (!window.currentEAProfile) window.currentEAProfile = null;
+        
+        console.log('🔧 Debug functions available: testProfileSystem(), addTestEA()');
+    </script>
+</body>
+</html> 

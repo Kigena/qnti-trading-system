@@ -1,0 +1,28 @@
+{
+  "trades": {},
+  "ea_performances": {},
+  "performance_metrics": {
+    "system_start_time": "2025-07-04 18:42:31.635336",
+    "total_analyses": 0,
+    "total_trades": 0,
+    "successful_trades": 0,
+    "failed_trades": 0,
+    "api_calls": 1,
+    "errors": 0
+  },
+  "config": {
+    "system": {
+      "auto_trading": false,
+      "vision_auto_analysis": true,
+      "ea_monitoring": true,
+      "api_port": 5000,
+      "debug_mode": true
+    },
+    "integration": {
+      "mt5_enabled": true,
+      "vision_enabled": true,
+      "dashboard_enabled": true
+    }
+  },
+  "timestamp": "20250704_184231"
+}

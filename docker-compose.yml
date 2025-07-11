@@ -1,0 +1,440 @@
+# QNTI Trading System - Docker Compose Configuration
+# Production-ready multi-service deployment
+
+version: '3.8'
+
+# Define custom networks
+networks:
+  qnti-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Define persistent volumes
+volumes:
+  # PostgreSQL data
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/docker/volumes/postgres
+      o: bind
+  
+  # Redis data
+  redis_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/docker/volumes/redis
+      o: bind
+  
+  # QNTI application data
+  qnti_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/docker/volumes/qnti_data
+      o: bind
+  
+  # QNTI logs
+  qnti_logs:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/docker/volumes/logs
+      o: bind
+  
+  # QNTI backups
+  qnti_backups:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/docker/volumes/backups
+      o: bind
+  
+  # Nginx configurations
+  nginx_config:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/docker/nginx
+      o: bind
+  
+  # SSL certificates
+  ssl_certs:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/docker/ssl
+      o: bind
+
+# Define services
+services:
+  # PostgreSQL Database
+  qnti-postgres:
+    image: postgres:15-alpine
+    container_name: qnti-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${QNTI_DB_NAME:-qnti_trading}
+      POSTGRES_USER: ${QNTI_DB_USER:-qnti_user}
+      POSTGRES_PASSWORD: ${QNTI_DB_PASSWORD:-qnti_password}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db_migration/postgresql_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./docker/postgres/init-scripts:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${QNTI_DB_EXTERNAL_PORT:-5432}:5432"
+    networks:
+      qnti-network:
+        ipv4_address: 172.20.0.10
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=4MB
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
+      -c max_worker_processes=8
+      -c max_parallel_workers_per_gather=4
+      -c max_parallel_workers=8
+      -c max_parallel_maintenance_workers=4
+      -c log_statement=all
+      -c log_destination=stderr
+      -c logging_collector=on
+      -c log_filename=postgresql-%Y-%m-%d.log
+      -c log_truncate_on_rotation=on
+      -c log_rotation_age=1d
+      -c log_rotation_size=100MB
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${QNTI_DB_USER:-qnti_user} -d ${QNTI_DB_NAME:-qnti_trading}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+      - /var/tmp
+
+  # Redis Cache
+  qnti-redis:
+    image: redis:7-alpine
+    container_name: qnti-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --tcp-keepalive 300
+      --timeout 0
+      --tcp-backlog 511
+      --databases 16
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --requirepass ${QNTI_REDIS_PASSWORD:-qnti_redis_pass}
+    volumes:
+      - redis_data:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    ports:
+      - "${QNTI_REDIS_EXTERNAL_PORT:-6379}:6379"
+    networks:
+      qnti-network:
+        ipv4_address: 172.20.0.11
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    security_opt:
+      - no-new-privileges:true
+
+  # QNTI Application
+  qnti-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+      args:
+        QNTI_ENV: ${QNTI_ENV:-production}
+    container_name: qnti-app
+    restart: unless-stopped
+    depends_on:
+      qnti-postgres:
+        condition: service_healthy
+      qnti-redis:
+        condition: service_healthy
+    environment:
+      # Application environment
+      QNTI_ENV: ${QNTI_ENV:-production}
+      FLASK_ENV: ${FLASK_ENV:-production}
+      PYTHONPATH: /app
+      
+      # Database configuration
+      QNTI_DB_HOST: qnti-postgres
+      QNTI_DB_PORT: 5432
+      QNTI_DB_NAME: ${QNTI_DB_NAME:-qnti_trading}
+      QNTI_DB_USER: ${QNTI_DB_USER:-qnti_user}
+      QNTI_DB_PASSWORD: ${QNTI_DB_PASSWORD:-qnti_password}
+      QNTI_DB_SCHEMA: ${QNTI_DB_SCHEMA:-qnti}
+      
+      # Redis configuration
+      QNTI_REDIS_HOST: qnti-redis
+      QNTI_REDIS_PORT: 6379
+      QNTI_REDIS_PASSWORD: ${QNTI_REDIS_PASSWORD:-qnti_redis_pass}
+      
+      # MT5 configuration (optional)
+      QNTI_MT5_ENABLED: ${QNTI_MT5_ENABLED:-false}
+      QNTI_MT5_LOGIN: ${QNTI_MT5_LOGIN:-}
+      QNTI_MT5_PASSWORD: ${QNTI_MT5_PASSWORD:-}
+      QNTI_MT5_SERVER: ${QNTI_MT5_SERVER:-}
+      
+      # API Keys (optional)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      
+      # Application settings
+      QNTI_DEBUG: ${QNTI_DEBUG:-false}
+      QNTI_LOG_LEVEL: ${QNTI_LOG_LEVEL:-INFO}
+      QNTI_WORKERS: ${QNTI_WORKERS:-4}
+      QNTI_MAX_REQUESTS: ${QNTI_MAX_REQUESTS:-1000}
+      
+      # Security settings
+      SECRET_KEY: ${SECRET_KEY:-qnti_secret_key_2024_change_in_production}
+      SECURITY_PASSWORD_SALT: ${SECURITY_PASSWORD_SALT:-qnti_salt_2024_change_in_production}
+    volumes:
+      - qnti_data:/app/qnti_data
+      - qnti_logs:/app/logs
+      - qnti_logs:/var/log/qnti
+      - qnti_backups:/app/qnti_backups
+      - ./ea_profiles:/app/ea_profiles
+      - ./chart_uploads:/app/chart_uploads
+      - ./qnti_screenshots:/app/qnti_screenshots
+      - ./qnti_memory:/app/qnti_memory
+    ports:
+      - "${QNTI_APP_EXTERNAL_PORT:-5000}:5000"
+    networks:
+      qnti-network:
+        ipv4_address: 172.20.0.20
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    read_only: false
+    tmpfs:
+      - /tmp:rw,size=1G,uid=1000,gid=1000
+
+  # Nginx Reverse Proxy
+  qnti-nginx:
+    image: nginx:alpine
+    container_name: qnti-nginx
+    restart: unless-stopped
+    depends_on:
+      - qnti-app
+    volumes:
+      - nginx_config:/etc/nginx/conf.d:ro
+      - ssl_certs:/etc/nginx/ssl:ro
+      - qnti_logs:/var/log/nginx
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "${QNTI_HTTP_PORT:-80}:80"
+      - "${QNTI_HTTPS_PORT:-443}:443"
+    networks:
+      qnti-network:
+        ipv4_address: 172.20.0.30
+    environment:
+      NGINX_ENVSUBST_TEMPLATE_DIR: /etc/nginx/templates
+      NGINX_ENVSUBST_TEMPLATE_SUFFIX: .template
+      QNTI_APP_HOST: qnti-app
+      QNTI_APP_PORT: 5000
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - NET_BIND_SERVICE
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:rw,size=100M,uid=101,gid=101
+      - /var/run:rw,size=10M,uid=101,gid=101
+
+  # Monitoring and Logging (Optional)
+  qnti-prometheus:
+    image: prom/prometheus:latest
+    container_name: qnti-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "${QNTI_PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      qnti-network:
+        ipv4_address: 172.20.0.40
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    profiles:
+      - monitoring
+
+  # Grafana Dashboard (Optional)
+  qnti-grafana:
+    image: grafana/grafana:latest
+    container_name: qnti-grafana
+    restart: unless-stopped
+    depends_on:
+      - qnti-prometheus
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    ports:
+      - "${QNTI_GRAFANA_PORT:-3000}:3000"
+    networks:
+      qnti-network:
+        ipv4_address: 172.20.0.41
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    profiles:
+      - monitoring
+
+  # Backup Service (Optional)
+  qnti-backup:
+    build:
+      context: ./docker/backup
+      dockerfile: Dockerfile
+    container_name: qnti-backup
+    restart: unless-stopped
+    depends_on:
+      - qnti-postgres
+      - qnti-redis
+      - qnti-app
+    environment:
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-0 2 * * *}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      QNTI_DB_HOST: qnti-postgres
+      QNTI_DB_NAME: ${QNTI_DB_NAME:-qnti_trading}
+      QNTI_DB_USER: ${QNTI_DB_USER:-qnti_user}
+      QNTI_DB_PASSWORD: ${QNTI_DB_PASSWORD:-qnti_password}
+      QNTI_REDIS_HOST: qnti-redis
+      QNTI_REDIS_PASSWORD: ${QNTI_REDIS_PASSWORD:-qnti_redis_pass}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
+    volumes:
+      - qnti_backups:/backups
+      - qnti_data:/app/qnti_data:ro
+    networks:
+      qnti-network:
+        ipv4_address: 172.20.0.50
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    profiles:
+      - backup
+
+# Additional volumes for monitoring
+volumes:
+  prometheus_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/docker/volumes/prometheus
+      o: bind
+  
+  grafana_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/docker/volumes/grafana
+      o: bind

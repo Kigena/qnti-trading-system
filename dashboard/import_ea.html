@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import EA via Code - QNTI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+
+        .dashboard-header {
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid #334155;
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: #94a3b8;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-link:hover {
+            background: rgba(100, 116, 139, 0.2);
+            color: #f1f5f9;
+        }
+
+        .nav-link.active {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+
+        .status-indicators {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-connected { background: #10b981; }
+        .status-warning { background: #f59e0b; }
+        .status-error { background: #ef4444; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #475569;
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Code Input Area */
+        .code-input-section {
+            margin-bottom: 2rem;
+        }
+
+        .code-textarea {
+            width: 100%;
+            height: 400px;
+            background: #0f172a;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            padding: 1rem;
+            color: #e2e8f0;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            resize: vertical;
+            transition: border-color 0.2s ease;
+        }
+
+        .code-textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .code-textarea::placeholder {
+            color: #64748b;
+        }
+
+        .code-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        .file-upload-area {
+            border: 2px dashed #475569;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload-area:hover {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .file-upload-area.drag-over {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Action Buttons */
+        .action-section {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-secondary {
+            background: #64748b;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #475569;
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            background: #374151;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Parsing Results */
+        .parsing-status {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        .parsing-status.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .status-success {
+            border-left: 4px solid #10b981;
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .status-error {
+            border-left: 4px solid #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .status-warning {
+            border-left: 4px solid #f59e0b;
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        /* EA Profile Display */
+        .ea-profile {
+            display: none;
+        }
+
+        .ea-profile.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .profile-section {
+            margin-bottom: 2rem;
+        }
+
+        .profile-section h3 {
+            color: #f1f5f9;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .parameters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .parameter-item {
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .parameter-label {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            text-transform: capitalize;
+        }
+
+        .parameter-input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #475569;
+            border-radius: 4px;
+            background: #334155;
+            color: #f1f5f9;
+            font-size: 0.9rem;
+        }
+
+        .parameter-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .parameter-description {
+            color: #64748b;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+
+        .rules-list {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .rule-item {
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 1rem;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .rule-item.buy-rule {
+            border-left-color: #10b981;
+        }
+
+        .rule-item.sell-rule {
+            border-left-color: #ef4444;
+        }
+
+        .rule-name {
+            color: #f1f5f9;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .rule-condition {
+            color: #94a3b8;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85rem;
+            background: rgba(15, 23, 42, 0.5);
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+        }
+
+        .rule-indicators {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .indicator-tag {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        /* Portfolio EA Strategies Styles */
+        .strategies-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .strategy-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .strategy-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px -3px rgba(0, 0, 0, 0.2);
+        }
+
+        .strategy-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .strategy-magic {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .strategy-indicators {
+            margin-top: 0.75rem;
+        }
+
+        .strategy-indicators .indicator-tag {
+            background: rgba(255, 255, 255, 0.25);
+            color: white;
+            margin: 0.125rem;
+            font-size: 0.75rem;
+        }
+
+        .strategy-conditions {
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        /* Progress Loading */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .loading-content {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            max-width: 400px;
+        }
+
+        .loading-spinner {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .parameters-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-section {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="header-content">
+            <div class="logo">Quantum Nexus Trading Intelligence</div>
+            <nav class="nav-menu">
+                <a href="main_dashboard.html" class="nav-link">📊 Overview</a>
+                <a href="trading_center.html" class="nav-link">📈 Trading</a>
+                <a href="ea_management.html" class="nav-link">🤖 EA Manager</a>
+                <a href="#" class="nav-link active">🧠 Import EA</a>
+                <a href="analytics_reports.html" class="nav-link">📊 Analytics</a>
+            </nav>
+            <div class="status-indicators">
+                <div class="status-item">
+                    <span>MT5:</span>
+                    <div class="status-dot status-error" id="mt5-status"></div>
+                </div>
+                <div class="status-item">
+                    <span>AI:</span>
+                    <div class="status-dot status-connected" id="ai-status"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🧠 Import EA via Code</h1>
+            <p>Paste your MQL4/MQL5 EA source code and let AI parse it automatically</p>
+        </div>
+
+        <div class="main-grid">
+            <!-- Left Side: Code Input -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        📝 EA Source Code
+                    </h2>
+                </div>
+
+                <!-- File Upload Area -->
+                <div class="file-upload-area" id="file-upload-area" onclick="triggerFileSelect()">
+                    <div class="upload-icon">📁</div>
+                    <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem;">
+                        Drop .mq4/.mq5 file or click to browse
+                    </div>
+                    <div style="color: #94a3b8; font-size: 0.9rem;">
+                        Supports files up to 5MB
+                    </div>
+                    <input type="file" id="file-input" accept=".mq4,.mq5,.txt" style="display: none;" onchange="handleFileUpload(event)">
+                </div>
+
+                <!-- Code Textarea -->
+                <div class="code-input-section">
+                    <textarea 
+                        id="ea-code-input" 
+                        class="code-textarea" 
+                        placeholder="Paste your EA source code here...
+
+Example:
+extern int Magic = 12345;
+extern double Lots = 0.1;
+extern int StopLoss = 50;
+extern int TakeProfit = 100;
+extern bool UseMA = true;
+
+int OnInit() {
+    return INIT_SUCCEEDED;
+}
+
+void OnTick() {
+    // Your trading logic here...
+}"
+                        oninput="updateCodeStats()"
+                    ></textarea>
+                    <div class="code-stats">
+                        <span id="code-stats">0 characters, 0 lines</span>
+                        <span id="file-name"></span>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-section">
+                    <button class="btn btn-primary" id="parse-btn" onclick="parseEACode()" disabled>
+                        <span>🔍</span>
+                        <span>Parse EA Code</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearCode()">
+                        <span>🗑️</span>
+                        <span>Clear</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="loadSampleEA()">
+                        <span>📋</span>
+                        <span>Load Sample</span>
+                    </button>
+                </div>
+
+                <!-- Parsing Status -->
+                <div id="parsing-status" class="parsing-status">
+                    <div id="status-content"></div>
+                </div>
+            </div>
+
+            <!-- Right Side: Parsed Results -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        ⚙️ EA Profile
+                    </h2>
+                </div>
+
+                <div id="ea-profile" class="ea-profile">
+                    <!-- Basic Information -->
+                    <div class="profile-section">
+                        <h3>📊 Basic Information</h3>
+                        <div class="parameters-grid">
+                            <div class="parameter-item">
+                                <div class="parameter-label">EA Name</div>
+                                <input type="text" id="ea-name" class="parameter-input" placeholder="EA Name">
+                            </div>
+                            <div class="parameter-item">
+                                <div class="parameter-label">Magic Number</div>
+                                <input type="number" id="ea-magic" class="parameter-input" placeholder="12345">
+                            </div>
+                            <div class="parameter-item">
+                                <div class="parameter-label">Symbols</div>
+                                <input type="text" id="ea-symbols" class="parameter-input" placeholder="EURUSD,GBPUSD">
+                                <div class="parameter-description">Comma-separated list of trading symbols</div>
+                            </div>
+                            <div class="parameter-item">
+                                <div class="parameter-label">Timeframes</div>
+                                <input type="text" id="ea-timeframes" class="parameter-input" placeholder="H1,H4">
+                                <div class="parameter-description">Comma-separated list of timeframes</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Portfolio EA Strategies -->
+                    <div id="strategies-section" class="profile-section" style="display: none;">
+                        <h3>🎯 Portfolio Strategies</h3>
+                        <div id="strategies-container" class="strategies-grid">
+                            <!-- Dynamic strategies will be inserted here -->
+                        </div>
+                    </div>
+
+                    <!-- Parameters -->
+                    <div class="profile-section">
+                        <h3>🔧 Input Parameters</h3>
+                        <div id="parameters-container" class="parameters-grid">
+                            <!-- Dynamic parameters will be inserted here -->
+                        </div>
+                    </div>
+
+                    <!-- Trading Rules -->
+                    <div class="profile-section">
+                        <h3>📈 Entry Rules</h3>
+                        <div id="entry-rules-container" class="rules-list">
+                            <!-- Dynamic entry rules will be inserted here -->
+                        </div>
+                    </div>
+
+                    <div class="profile-section">
+                        <h3>📉 Exit Rules</h3>
+                        <div id="exit-rules-container" class="rules-list">
+                            <!-- Dynamic exit rules will be inserted here -->
+                        </div>
+                    </div>
+
+                    <!-- Indicators Used -->
+                    <div class="profile-section">
+                        <h3>📊 Indicators Used</h3>
+                        <div id="indicators-container">
+                            <!-- Dynamic indicators will be inserted here -->
+                        </div>
+                    </div>
+
+                    <!-- Save Profile -->
+                    <div class="action-section">
+                        <button class="btn btn-primary" onclick="saveEAProfile()">
+                            <span>💾</span>
+                            <span>Save EA Profile</span>
+                        </button>
+                        <button class="btn btn-secondary" onclick="testEAProfile()">
+                            <span>🧪</span>
+                            <span>Test EA</span>
+                        </button>
+                        <button class="btn" onclick="testAPIConnection()" style="background: #f59e0b; color: white; margin-left: 0.5rem;">
+                            <span>🔧</span>
+                            <span>Test API</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Default State -->
+                <div id="default-state" style="text-align: center; padding: 3rem; color: #64748b;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🤖</div>
+                    <div style="font-size: 1.1rem; margin-bottom: 0.5rem;">No EA Code Parsed Yet</div>
+                    <div style="font-size: 0.9rem;">Paste your EA code on the left to see the parsed profile here</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-spinner">🧠</div>
+            <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem;">Parsing EA Code</div>
+            <div style="color: #94a3b8; font-size: 0.9rem;">AI is analyzing your EA logic...</div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentEAProfile = null;
+        let parsedParameters = [];
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCodeStats();
+            setupDragAndDrop();
+        });
+
+        // File handling
+        function triggerFileSelect() {
+            document.getElementById('file-input').click();
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            console.log('📁 File selected:', file.name);
+
+            // Validate file
+            if (file.size > 5 * 1024 * 1024) {
+                showStatus('File too large. Maximum size is 5MB.', 'error');
+                return;
+            }
+
+            // Read file content
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                document.getElementById('ea-code-input').value = content;
+                document.getElementById('file-name').textContent = file.name;
+                updateCodeStats();
+                showStatus(`File "${file.name}" loaded successfully!`, 'success');
+            };
+            reader.onerror = function() {
+                showStatus('Error reading file.', 'error');
+            };
+            reader.readAsText(file);
+        }
+
+        function setupDragAndDrop() {
+            const dropArea = document.getElementById('file-upload-area');
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, () => {
+                    dropArea.classList.add('drag-over');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, () => {
+                    dropArea.classList.remove('drag-over');
+                }, false);
+            });
+
+            dropArea.addEventListener('drop', function(e) {
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const fakeEvent = { target: { files: [files[0]] } };
+                    handleFileUpload(fakeEvent);
+                }
+            }, false);
+        }
+
+        function updateCodeStats() {
+            const textarea = document.getElementById('ea-code-input');
+            const code = textarea.value;
+            const lines = code.split('\n').length;
+            const chars = code.length;
+
+            document.getElementById('code-stats').textContent = 
+                `${chars.toLocaleString()} characters, ${lines.toLocaleString()} lines`;
+
+            // Enable/disable parse button
+            const parseBtn = document.getElementById('parse-btn');
+            parseBtn.disabled = code.trim().length < 100; // Minimum 100 characters
+        }
+
+        function clearCode() {
+            document.getElementById('ea-code-input').value = '';
+            document.getElementById('file-name').textContent = '';
+            updateCodeStats();
+            hideEAProfile();
+            hideStatus();
+        }
+
+        function loadSampleEA() {
+            const sampleCode = `//+------------------------------------------------------------------+
+//|                                           Sample EA v1.0     |
+//+------------------------------------------------------------------+
+extern int Magic = 12345;
+extern double Lots = 0.1;
+extern int StopLoss = 50;
+extern int TakeProfit = 100;
+extern bool UseMA = true;
+extern int MAPeriod = 14;
+extern bool UseRSI = false;
+extern int RSIPeriod = 14;
+extern int RSIBuy = 30;
+extern int RSISell = 70;
+extern int MaxSpread = 3;
+extern string AllowedSymbols = "EURUSD,GBPUSD,USDJPY";
+
+int OnInit() {
+    Print("Sample EA initialized");
+    return INIT_SUCCEEDED;
+}
+
+void OnTick() {
+    if (Spread() > MaxSpread) return;
+    
+    double ma = iMA(Symbol(), Period(), MAPeriod, 0, MODE_SMA, PRICE_CLOSE, 0);
+    double rsi = iRSI(Symbol(), Period(), RSIPeriod, PRICE_CLOSE, 0);
+    double price = Close[0];
+    
+    // Buy conditions
+    if (UseMA && price > ma && (!UseRSI || rsi < RSIBuy) && !HasBuyOrder()) {
+        OrderSend(Symbol(), OP_BUY, Lots, Ask, 3, 
+                 Ask - StopLoss * Point, Ask + TakeProfit * Point, 
+                 "Buy Order", Magic, 0, Blue);
+    }
+    
+    // Sell conditions  
+    if (UseMA && price < ma && (!UseRSI || rsi > RSISell) && !HasSellOrder()) {
+        OrderSend(Symbol(), OP_SELL, Lots, Bid, 3,
+                 Bid + StopLoss * Point, Bid - TakeProfit * Point,
+                 "Sell Order", Magic, 0, Red);
+    }
+    
+    // Exit conditions
+    if (HasBuyOrder() && price < ma - 10 * Point) {
+        CloseBuyOrders();
+    }
+    
+    if (HasSellOrder() && price > ma + 10 * Point) {
+        CloseSellOrders();
+    }
+}
+
+bool HasBuyOrder() {
+    for (int i = 0; i < OrdersTotal(); i++) {
+        if (OrderSelect(i, SELECT_BY_POS) && OrderMagicNumber() == Magic && OrderType() == OP_BUY)
+            return true;
+    }
+    return false;
+}
+
+bool HasSellOrder() {
+    for (int i = 0; i < OrdersTotal(); i++) {
+        if (OrderSelect(i, SELECT_BY_POS) && OrderMagicNumber() == Magic && OrderType() == OP_SELL)
+            return true;
+    }
+    return false;
+}
+
+void CloseBuyOrders() {
+    for (int i = OrdersTotal() - 1; i >= 0; i--) {
+        if (OrderSelect(i, SELECT_BY_POS) && OrderMagicNumber() == Magic && OrderType() == OP_BUY) {
+            OrderClose(OrderTicket(), OrderLots(), Bid, 3, Red);
+        }
+    }
+}
+
+void CloseSellOrders() {
+    for (int i = OrdersTotal() - 1; i >= 0; i--) {
+        if (OrderSelect(i, SELECT_BY_POS) && OrderMagicNumber() == Magic && OrderType() == OP_SELL) {
+            OrderClose(OrderTicket(), OrderLots(), Ask, 3, Blue);
+        }
+    }
+}`;
+
+            document.getElementById('ea-code-input').value = sampleCode;
+            updateCodeStats();
+            showStatus('Sample EA code loaded!', 'success');
+        }
+
+        async function parseEACode() {
+            const code = document.getElementById('ea-code-input').value.trim();
+            
+            if (code.length < 100) {
+                showStatus('Code too short. Please paste a complete EA.', 'error');
+                return;
+            }
+
+            console.log('🔍 Parsing EA code...');
+            showLoading();
+
+            try {
+                // Call backend API to parse the code
+                const response = await fetch('/api/ea/parse-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        code: code
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Parsing failed: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                console.log('✅ EA parsed successfully:', result);
+
+                currentEAProfile = result.profile;
+                displayEAProfile(currentEAProfile);
+                
+                const paramCount = (currentEAProfile.parameters || []).length;
+                const entryRuleCount = (currentEAProfile.entry_rules || []).length;
+                const exitRuleCount = (currentEAProfile.exit_rules || []).length;
+                
+                showStatus(`EA "${currentEAProfile.name || 'Unknown'}" parsed successfully! Found ${paramCount} parameters, ${entryRuleCount} entry rules, and ${exitRuleCount} exit rules.`, 'success');
+
+            } catch (error) {
+                console.error('❌ Parsing error:', error);
+                showStatus(`Parsing failed: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displayEAProfile(profile) {
+            try {
+                console.log('📊 Displaying EA Profile:', profile);
+                
+                // Validate profile object
+                if (!profile || typeof profile !== 'object') {
+                    throw new Error('Invalid profile data received');
+                }
+
+                // Show profile section
+                document.getElementById('default-state').style.display = 'none';
+                document.getElementById('ea-profile').classList.add('show');
+
+                // Fill basic information with safe defaults
+                document.getElementById('ea-name').value = profile.name || 'Unknown EA';
+                document.getElementById('ea-magic').value = profile.magic_number || 12345;
+                document.getElementById('ea-symbols').value = (profile.symbols || []).join(',');
+                document.getElementById('ea-timeframes').value = (profile.timeframes || []).join(',');
+
+                // Display parameters with error handling
+                try {
+                    displayParameters(profile.parameters || []);
+                } catch (paramError) {
+                    console.error('Error displaying parameters:', paramError);
+                    document.getElementById('parameters-container').innerHTML = '<div style="color: #ef4444; text-align: center; padding: 2rem;">Error loading parameters</div>';
+                }
+
+                // Display rules with error handling
+                try {
+                    displayRules(profile.entry_rules || [], 'entry-rules-container');
+                    displayRules(profile.exit_rules || [], 'exit-rules-container');
+                } catch (rulesError) {
+                    console.error('Error displaying rules:', rulesError);
+                    document.getElementById('entry-rules-container').innerHTML = '<div style="color: #ef4444; text-align: center; padding: 2rem;">Error loading entry rules</div>';
+                    document.getElementById('exit-rules-container').innerHTML = '<div style="color: #ef4444; text-align: center; padding: 2rem;">Error loading exit rules</div>';
+                }
+
+                // Display indicators with error handling
+                try {
+                    displayIndicators(profile.indicators_used || []);
+                } catch (indicatorError) {
+                    console.error('Error displaying indicators:', indicatorError);
+                    document.getElementById('indicators-container').innerHTML = '<div style="color: #ef4444; text-align: center; padding: 1rem;">Error loading indicators</div>';
+                }
+
+                // Display Portfolio EA strategies if applicable
+                try {
+                    displayPortfolioStrategies(profile);
+                } catch (strategiesError) {
+                    console.error('Error displaying strategies:', strategiesError);
+                    document.getElementById('strategies-section').style.display = 'none';
+                }
+
+            } catch (error) {
+                console.error('❌ Error displaying EA profile:', error);
+                showStatus(`Error displaying profile: ${error.message}`, 'error');
+            }
+        }
+
+        function displayParameters(parameters) {
+            const container = document.getElementById('parameters-container');
+            container.innerHTML = '';
+
+            if (!parameters || parameters.length === 0) {
+                container.innerHTML = '<div style="color: #64748b; text-align: center; padding: 2rem;">No parameters detected</div>';
+                return;
+            }
+
+            parameters.forEach(param => {
+                const paramDiv = document.createElement('div');
+                paramDiv.className = 'parameter-item';
+                
+                let inputType = 'text';
+                let inputValue = param.default_value || '';
+                
+                if (param.type === 'bool') {
+                    inputType = 'checkbox';
+                    inputValue = param.default_value ? 'checked' : '';
+                } else if (param.type === 'int' || param.type === 'double') {
+                    inputType = 'number';
+                    if (param.type === 'double' && param.default_value !== undefined) {
+                        inputValue = parseFloat(param.default_value || 0).toFixed(2);
+                    } else if (param.default_value !== undefined) {
+                        inputValue = param.default_value;
+                    } else {
+                        inputValue = param.type === 'double' ? '0.00' : '0';
+                    }
+                }
+
+                paramDiv.innerHTML = `
+                    <div class="parameter-label">${param.name}</div>
+                    <input type="${inputType}" 
+                           class="parameter-input" 
+                           value="${inputValue}"
+                           data-param="${param.name}"
+                           data-type="${param.type}"
+                           ${inputType === 'checkbox' ? inputValue : ''}>
+                    ${param.description ? `<div class="parameter-description">${param.description}</div>` : ''}
+                `;
+
+                container.appendChild(paramDiv);
+            });
+
+            parsedParameters = parameters;
+        }
+
+        function displayRules(rules, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            if (!rules || rules.length === 0) {
+                container.innerHTML = '<div style="color: #64748b; text-align: center; padding: 2rem;">No rules detected</div>';
+                return;
+            }
+
+            rules.forEach(rule => {
+                const ruleDiv = document.createElement('div');
+                ruleDiv.className = `rule-item ${(rule.action || 'unknown').toLowerCase()}-rule`;
+                
+                ruleDiv.innerHTML = `
+                    <div class="rule-name">${rule.name || 'Unnamed Rule'}</div>
+                    <div class="rule-condition">${rule.condition || 'No condition specified'}</div>
+                    <div class="rule-indicators">
+                        ${(rule.indicators || []).map(indicator => 
+                            `<span class="indicator-tag">${indicator}</span>`
+                        ).join('')}
+                    </div>
+                `;
+
+                container.appendChild(ruleDiv);
+            });
+        }
+
+        function displayIndicators(indicators) {
+            const container = document.getElementById('indicators-container');
+            
+            if (!indicators || indicators.length === 0) {
+                container.innerHTML = '<div style="color: #64748b; text-align: center; padding: 1rem;">No indicators detected</div>';
+                return;
+            }
+
+            container.innerHTML = indicators.map(indicator => 
+                `<span class="indicator-tag" style="margin: 0.25rem;">${indicator}</span>`
+            ).join('');
+        }
+
+        function displayPortfolioStrategies(profile) {
+            const strategiesSection = document.getElementById('strategies-section');
+            const strategiesContainer = document.getElementById('strategies-container');
+            
+            // Check if this is a Portfolio EA with strategies
+            if (!profile.is_portfolio || !profile.strategies || profile.strategies.length === 0) {
+                strategiesSection.style.display = 'none';
+                return;
+            }
+
+            // Show the strategies section
+            strategiesSection.style.display = 'block';
+            strategiesContainer.innerHTML = '';
+
+            profile.strategies.forEach((strategy, index) => {
+                const strategyCard = document.createElement('div');
+                strategyCard.className = 'strategy-card';
+                
+                const indicatorTags = (strategy.indicators || []).map(indicator => 
+                    `<span class="indicator-tag">${indicator}</span>`
+                ).join('');
+
+                const entryConditions = (strategy.entry_conditions || []).slice(0, 2).map(condition => 
+                    `<div>• ${condition.length > 50 ? condition.substring(0, 50) + '...' : condition}</div>`
+                ).join('');
+
+                strategyCard.innerHTML = `
+                    <div class="strategy-name">
+                        <span>🎯</span>
+                        <span>${strategy.name || `Strategy ${index + 1}`}</span>
+                        <span class="strategy-magic">Magic: ${strategy.magic_number || 'N/A'}</span>
+                    </div>
+                    
+                    ${indicatorTags ? `
+                        <div class="strategy-indicators">
+                            <div style="font-size: 0.8rem; margin-bottom: 0.25rem; opacity: 0.8;">Indicators:</div>
+                            ${indicatorTags}
+                        </div>
+                    ` : ''}
+                    
+                    ${entryConditions ? `
+                        <div class="strategy-conditions">
+                            <div style="font-size: 0.8rem; margin-bottom: 0.25rem; opacity: 0.8;">Entry Conditions:</div>
+                            ${entryConditions}
+                        </div>
+                    ` : ''}
+                `;
+
+                strategiesContainer.appendChild(strategyCard);
+            });
+
+            console.log(`🎯 Displayed ${profile.strategies.length} Portfolio EA strategies`);
+        }
+
+        function hideEAProfile() {
+            document.getElementById('ea-profile').classList.remove('show');
+            document.getElementById('default-state').style.display = 'block';
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('parsing-status');
+            const contentDiv = document.getElementById('status-content');
+            
+            statusDiv.className = `parsing-status show status-${type}`;
+            contentDiv.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span>${type === 'success' ? '✅' : type === 'error' ? '❌' : '⚠️'}</span>
+                    <span>${message}</span>
+                </div>
+            `;
+        }
+
+        function hideStatus() {
+            document.getElementById('parsing-status').classList.remove('show');
+        }
+
+        function showLoading() {
+            document.getElementById('loading-overlay').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading-overlay').style.display = 'none';
+        }
+
+        async function saveEAProfile() {
+            if (!currentEAProfile) {
+                showStatus('No EA profile to save. Parse an EA first.', 'error');
+                return;
+            }
+
+            console.log('💾 Saving EA profile...');
+
+            // Collect updated parameters
+            const updatedParameters = {};
+            if (parsedParameters && parsedParameters.length > 0) {
+                parsedParameters.forEach(param => {
+                    const input = document.querySelector(`[data-param="${param.name}"]`);
+                    if (input) {
+                        if (param.type === 'bool') {
+                            updatedParameters[param.name] = input.checked;
+                        } else if (param.type === 'int') {
+                            updatedParameters[param.name] = parseInt(input.value);
+                        } else if (param.type === 'double') {
+                            updatedParameters[param.name] = parseFloat(input.value);
+                        } else {
+                            updatedParameters[param.name] = input.value;
+                        }
+                    }
+                });
+            }
+
+            // Collect basic info
+            const profileData = {
+                name: document.getElementById('ea-name').value,
+                magic_number: parseInt(document.getElementById('ea-magic').value),
+                symbols: document.getElementById('ea-symbols').value.split(',').map(s => s.trim()),
+                timeframes: document.getElementById('ea-timeframes').value.split(',').map(s => s.trim()),
+                parameters: updatedParameters,
+                original_code: document.getElementById('ea-code-input').value,
+                profile: currentEAProfile
+            };
+
+            console.log('📤 Sending profile data:', profileData);
+            console.log('🌐 Current URL:', window.location.href);
+            console.log('🎯 Target endpoint:', '/api/ea/save-profile');
+
+            try {
+                const response = await fetch('/api/ea/save-profile', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(profileData)
+                });
+
+                console.log('📥 Response status:', response.status);
+                console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+                console.log('📥 Response URL:', response.url);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ Response error text:', errorText);
+                    throw new Error(`Save failed: ${response.status} ${response.statusText} - ${errorText}`);
+                }
+
+                const result = await response.json();
+                console.log('✅ EA profile saved:', result);
+
+                showStatus(`EA profile "${profileData.name}" saved successfully!`, 'success');
+
+                // Redirect to EA management page after 2 seconds
+                setTimeout(() => {
+                    window.location.href = '/ea-management';
+                }, 2000);
+
+            } catch (error) {
+                console.error('❌ Save error:', error);
+                console.error('❌ Error details:', {
+                    message: error.message,
+                    stack: error.stack,
+                    name: error.name
+                });
+                showStatus(`Save failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testEAProfile() {
+            if (!currentEAProfile) {
+                showStatus('No EA profile to test. Parse an EA first.', 'error');
+                return;
+            }
+
+            console.log('🧪 Testing EA profile...');
+            showStatus('EA testing feature coming soon!', 'warning');
+        }
+
+        async function testAPIConnection() {
+            console.log('🔧 Testing API connection...');
+            showStatus('Testing API connection...', 'warning');
+
+            try {
+                // Test a simple GET request first
+                const healthResponse = await fetch('/api/health');
+                console.log('🏥 Health API status:', healthResponse.status);
+
+                // Test the save-profile endpoint with minimal data
+                const testData = {
+                    name: 'API Test EA',
+                    magic_number: 99999,
+                    symbols: ['EURUSD'],
+                    timeframes: ['H1'],
+                    parameters: {},
+                    original_code: '// Test code',
+                    profile: { indicators: [], entry_rules: [], exit_rules: [] }
+                };
+
+                console.log('🧪 Testing save-profile endpoint...');
+                const saveResponse = await fetch('/api/ea/save-profile', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                console.log('📊 Save API test result:', saveResponse.status);
+                
+                if (saveResponse.ok) {
+                    const result = await saveResponse.json();
+                    console.log('✅ API test successful:', result);
+                    showStatus('✅ API connection test successful!', 'success');
+                } else {
+                    const errorText = await saveResponse.text();
+                    console.error('❌ API test failed:', errorText);
+                    showStatus(`❌ API test failed: ${saveResponse.status} - ${errorText}`, 'error');
+                }
+
+            } catch (error) {
+                console.error('❌ API test error:', error);
+                showStatus(`❌ API test error: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html> 

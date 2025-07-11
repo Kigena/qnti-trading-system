@@ -1,0 +1,202 @@
+# Docker Compose Security Extensions for QNTI Trading System
+# This file extends the main docker-compose.yml with additional security configurations
+
+version: '3.8'
+
+services:
+  # Security-hardened QNTI Application
+  qnti-app:
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:qnti-app
+      - seccomp:./docker/security/seccomp.json
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETGID
+      - SETUID
+      - CHOWN
+      - DAC_OVERRIDE
+    read_only: false
+    tmpfs:
+      - /tmp:rw,size=1G,uid=1000,gid=1000,noexec,nosuid,nodev
+      - /var/tmp:rw,size=100M,uid=1000,gid=1000,noexec,nosuid,nodev
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+      nproc:
+        soft: 4096
+        hard: 4096
+      memlock:
+        soft: -1
+        hard: -1
+    sysctls:
+      - net.core.somaxconn=1024
+      - net.ipv4.tcp_keepalive_time=600
+      - net.ipv4.tcp_keepalive_intvl=30
+      - net.ipv4.tcp_keepalive_probes=3
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      qnti-postgres:
+        condition: service_healthy
+      qnti-redis:
+        condition: service_healthy
+    restart: unless-stopped
+    
+  # Security-hardened PostgreSQL
+  qnti-postgres:
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    read_only: false
+    tmpfs:
+      - /tmp:rw,size=1G,uid=999,gid=999,noexec,nosuid,nodev
+      - /var/tmp:rw,size=100M,uid=999,gid=999,noexec,nosuid,nodev
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+      nproc:
+        soft: 4096
+        hard: 4096
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${QNTI_DB_USER:-qnti_user} -d ${QNTI_DB_NAME:-qnti_trading}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    
+  # Security-hardened Redis
+  qnti-redis:
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    read_only: false
+    tmpfs:
+      - /tmp:rw,size=100M,uid=999,gid=999,noexec,nosuid,nodev
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+      nproc:
+        soft: 4096
+        hard: 4096
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    
+  # Security-hardened Nginx
+  qnti-nginx:
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - NET_BIND_SERVICE
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:rw,size=100M,uid=101,gid=101,noexec,nosuid,nodev
+      - /var/run:rw,size=10M,uid=101,gid=101,noexec,nosuid,nodev
+      - /tmp:rw,size=50M,uid=101,gid=101,noexec,nosuid,nodev
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+      nproc:
+        soft: 4096
+        hard: 4096
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    
+  # Security-hardened Prometheus
+  qnti-prometheus:
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - NET_BIND_SERVICE
+    read_only: false
+    tmpfs:
+      - /tmp:rw,size=100M,uid=65534,gid=65534,noexec,nosuid,nodev
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+      nproc:
+        soft: 4096
+        hard: 4096
+    restart: unless-stopped
+    profiles:
+      - monitoring
+    
+  # Security-hardened Grafana
+  qnti-grafana:
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - NET_BIND_SERVICE
+    read_only: false
+    tmpfs:
+      - /tmp:rw,size=100M,uid=472,gid=472,noexec,nosuid,nodev
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+      nproc:
+        soft: 4096
+        hard: 4096
+    restart: unless-stopped
+    profiles:
+      - monitoring

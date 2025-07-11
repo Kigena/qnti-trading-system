@@ -1,0 +1,19 @@
+{
+  "account": {
+    "login": 0,
+    "password": "",
+    "server": ""
+  },
+  "symbols": ["EURUSD", "GBPUSD", "USDJPY"],
+  "ea_monitoring": {
+    "check_interval": 30,
+    "log_directory": "MQL5/Files/EA_Logs",
+    "enable_file_monitoring": true
+  },
+  "risk_management": {
+    "max_daily_loss": 1000,
+    "max_open_trades": 10,
+    "max_lot_size": 1.0,
+    "emergency_close_drawdown": 0.20
+  }
+} 

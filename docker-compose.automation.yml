@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  qnti-system:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - ./qnti_data:/app/qnti_data
+    command: python qnti_main_system.py
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/system/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  automation-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.automation
+    depends_on:
+      qnti-system:
+        condition: service_healthy
+    environment:
+      - QNTI_URL=http://qnti-system:5000
+    volumes:
+      - ./automation_results:/app/automation_results
+    command: python qnti_automation_suite.py --url http://qnti-system:5000 --headless
+
+  load-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.automation
+    depends_on:
+      qnti-system:
+        condition: service_healthy
+    environment:
+      - QNTI_URL=http://qnti-system:5000
+    volumes:
+      - ./load_test_results:/app/load_test_results
+    command: python load_test.py
+    profiles:
+      - load-testing

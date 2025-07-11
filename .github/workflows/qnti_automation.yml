@@ -1,0 +1,108 @@
+name: QNTI Automation Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run automated tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  automation-tests:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python setup_automation.py
+        pip install -r requirements.txt
+    
+    - name: Start QNTI System
+      run: |
+        python qnti_main_system.py &
+        sleep 30  # Wait for system to start
+    
+    - name: Run Quick Automation Tests
+      run: |
+        python quick_test.py
+    
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ matrix.python-version }}
+        path: |
+          qnti_simulation_report_*.json
+          *.png
+          qnti_automation.log
+    
+    - name: Check Test Results
+      run: |
+        # Parse test results and fail if success rate < 95%
+        python -c "
+        import json, glob, sys
+        reports = glob.glob('qnti_simulation_report_*.json')
+        if reports:
+            with open(reports[-1]) as f:
+                data = json.load(f)
+            success_rate = data['simulation_summary']['success_rate']
+            if success_rate < 0.95:
+                print(f'Test failure: Success rate {success_rate:.1%} < 95%')
+                sys.exit(1)
+            print(f'Tests passed: Success rate {success_rate:.1%}')
+        else:
+            print('No test reports found')
+            sys.exit(1)
+        "
+
+  load-tests:
+    runs-on: ubuntu-latest
+    # Only run load tests on main branch
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: 3.11
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python setup_automation.py
+        pip install -r requirements.txt
+    
+    - name: Start QNTI System
+      run: |
+        python qnti_main_system.py &
+        sleep 30
+    
+    - name: Run Load Tests
+      run: |
+        timeout 3600 python load_test.py  # 1 hour timeout
+    
+    - name: Upload Load Test Results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: load-test-results
+        path: |
+          qnti_simulation_report_*.json
+          *.png
+          qnti_automation.log

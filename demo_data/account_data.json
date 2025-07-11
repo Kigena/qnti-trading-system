@@ -1,0 +1,16 @@
+{
+  "login": 12345678,
+  "server": "Demo-Server",
+  "name": "QNTI Demo Account",
+  "company": "Demo Broker",
+  "currency": "USD",
+  "leverage": 100,
+  "balance": 10000.0,
+  "equity": 10009.75,
+  "margin": 380.61,
+  "free_margin": 9629.13,
+  "margin_level": 2629.89,
+  "profit": 9.75,
+  "credit": 0.0,
+  "account_number": 12345678
+}

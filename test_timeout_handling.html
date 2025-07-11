@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QNTI Timeout Handling Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 20px;
+        }
+        .test-section {
+            background: #334155;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+        .success { background: #065f46; }
+        .error { background: #7f1d1d; }
+        .loading { background: #374151; }
+        .info { background: #1e3a8a; }
+    </style>
+</head>
+<body>
+    <h1>QNTI Timeout Handling Test</h1>
+    
+    <div class="test-section">
+        <h2>Backend Connection Test</h2>
+        <div id="backend-status" class="status loading">Testing backend connection...</div>
+        <div id="response-time" class="status info">Response time: calculating...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Health Endpoint Test</h2>
+        <div id="health-status" class="status loading">Testing health endpoint...</div>
+        <div id="health-data" class="status info">Health data: loading...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Trades Endpoint Test</h2>
+        <div id="trades-status" class="status loading">Testing trades endpoint...</div>
+        <div id="trades-count" class="status info">Trades count: loading...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Market Data Test</h2>
+        <div id="market-status" class="status loading">Testing market data endpoint...</div>
+        <div id="market-symbols" class="status info">Symbols: loading...</div>
+    </div>
+
+    <script>
+        // Test configuration
+        const API_TIMEOUT = 60000; // 60 seconds
+        const BASE_URL = 'http://localhost:5002';
+        
+        // Fetch with timeout (same as our main implementation)
+        async function fetchWithTimeout(url, timeout = API_TIMEOUT) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+            
+            try {
+                const startTime = Date.now();
+                const response = await fetch(url, { signal: controller.signal });
+                const endTime = Date.now();
+                clearTimeout(timeoutId);
+                
+                return {
+                    response,
+                    responseTime: endTime - startTime
+                };
+            } catch (error) {
+                clearTimeout(timeoutId);
+                if (error.name === 'AbortError') {
+                    throw new Error(`Request timed out after ${timeout/1000} seconds`);
+                }
+                throw error;
+            }
+        }
+        
+        // Test functions
+        async function testBackendConnection() {
+            const statusEl = document.getElementById('backend-status');
+            const timeEl = document.getElementById('response-time');
+            
+            try {
+                const { response, responseTime } = await fetchWithTimeout(`${BASE_URL}/api/health`);
+                
+                if (response.ok) {
+                    statusEl.textContent = '✅ Backend connection successful';
+                    statusEl.className = 'status success';
+                    timeEl.textContent = `⏱️ Response time: ${responseTime}ms`;
+                    timeEl.className = responseTime > 5000 ? 'status error' : 'status success';
+                    return true;
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                statusEl.textContent = `❌ Backend connection failed: ${error.message}`;
+                statusEl.className = 'status error';
+                timeEl.textContent = '⏱️ Response time: N/A';
+                timeEl.className = 'status error';
+                return false;
+            }
+        }
+        
+        async function testHealthEndpoint() {
+            const statusEl = document.getElementById('health-status');
+            const dataEl = document.getElementById('health-data');
+            
+            try {
+                const { response, responseTime } = await fetchWithTimeout(`${BASE_URL}/api/health`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    statusEl.textContent = `✅ Health endpoint working (${responseTime}ms)`;
+                    statusEl.className = 'status success';
+                    dataEl.textContent = `📊 Balance: $${data.account_balance}, Equity: $${data.account_equity}, Trades: ${data.total_trades}`;
+                    dataEl.className = 'status success';
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                statusEl.textContent = `❌ Health endpoint failed: ${error.message}`;
+                statusEl.className = 'status error';
+                dataEl.textContent = '📊 Health data: unavailable';
+                dataEl.className = 'status error';
+            }
+        }
+        
+        async function testTradesEndpoint() {
+            const statusEl = document.getElementById('trades-status');
+            const countEl = document.getElementById('trades-count');
+            
+            try {
+                const { response, responseTime } = await fetchWithTimeout(`${BASE_URL}/api/trades`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    statusEl.textContent = `✅ Trades endpoint working (${responseTime}ms)`;
+                    statusEl.className = 'status success';
+                    countEl.textContent = `📈 Found ${data.length} trades`;
+                    countEl.className = 'status success';
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                statusEl.textContent = `❌ Trades endpoint failed: ${error.message}`;
+                statusEl.className = 'status error';
+                countEl.textContent = '📈 Trades count: unavailable';
+                countEl.className = 'status error';
+            }
+        }
+        
+        async function testMarketDataEndpoint() {
+            const statusEl = document.getElementById('market-status');
+            const symbolsEl = document.getElementById('market-symbols');
+            
+            try {
+                const { response, responseTime } = await fetchWithTimeout(`${BASE_URL}/api/market/symbols`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    statusEl.textContent = `✅ Market data endpoint working (${responseTime}ms)`;
+                    statusEl.className = 'status success';
+                    symbolsEl.textContent = `🔄 Found ${data.length} symbols: ${data.map(s => s.symbol).join(', ')}`;
+                    symbolsEl.className = 'status success';
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                statusEl.textContent = `❌ Market data endpoint failed: ${error.message}`;
+                statusEl.className = 'status error';
+                symbolsEl.textContent = '🔄 Market symbols: unavailable';
+                symbolsEl.className = 'status error';
+            }
+        }
+        
+        // Run all tests
+        async function runAllTests() {
+            console.log('🧪 Starting QNTI timeout handling tests...');
+            
+            await testBackendConnection();
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between tests
+            
+            await testHealthEndpoint();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await testTradesEndpoint();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await testMarketDataEndpoint();
+            
+            console.log('✅ All tests completed');
+        }
+        
+        // Start tests when page loads
+        document.addEventListener('DOMContentLoaded', runAllTests);
+    </script>
+</body>
+</html> 

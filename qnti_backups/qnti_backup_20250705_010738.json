@@ -1,0 +1,154 @@
+{
+  "trades": {
+    "MT5_532194913": {
+      "trade_id": "MT5_532194913",
+      "magic_number": 100001,
+      "symbol": "EURUSD",
+      "trade_type": "SELL",
+      "lot_size": 0.01,
+      "open_price": 1.17999,
+      "close_price": null,
+      "stop_loss": null,
+      "take_profit": null,
+      "open_time": "2025-07-02 03:00:04",
+      "close_time": null,
+      "profit": null,
+      "commission": null,
+      "swap": null,
+      "source": "TradeSource.EXPERT_ADVISOR",
+      "status": "TradeStatus.OPEN",
+      "ea_name": null,
+      "ai_confidence": null,
+      "strategy_tags": [],
+      "notes": null
+    },
+    "MT5_532195807": {
+      "trade_id": "MT5_532195807",
+      "magic_number": 100003,
+      "symbol": "USDCAD",
+      "trade_type": "BUY",
+      "lot_size": 0.01,
+      "open_price": 1.365,
+      "close_price": null,
+      "stop_loss": null,
+      "take_profit": null,
+      "open_time": "2025-07-02 03:45:01",
+      "close_time": null,
+      "profit": null,
+      "commission": null,
+      "swap": null,
+      "source": "TradeSource.EXPERT_ADVISOR",
+      "status": "TradeStatus.OPEN",
+      "ea_name": null,
+      "ai_confidence": null,
+      "strategy_tags": [],
+      "notes": null
+    },
+    "MT5_532225834": {
+      "trade_id": "MT5_532225834",
+      "magic_number": 500003,
+      "symbol": "GOLD",
+      "trade_type": "SELL",
+      "lot_size": 0.01,
+      "open_price": 3335.41,
+      "close_price": null,
+      "stop_loss": null,
+      "take_profit": null,
+      "open_time": "2025-07-02 07:15:02",
+      "close_time": null,
+      "profit": null,
+      "commission": null,
+      "swap": null,
+      "source": "TradeSource.EXPERT_ADVISOR",
+      "status": "TradeStatus.OPEN",
+      "ea_name": null,
+      "ai_confidence": null,
+      "strategy_tags": [],
+      "notes": null
+    },
+    "MT5_532612742": {
+      "trade_id": "MT5_532612742",
+      "magic_number": 100003,
+      "symbol": "EURJPY",
+      "trade_type": "BUY",
+      "lot_size": 0.01,
+      "open_price": 169.549,
+      "close_price": null,
+      "stop_loss": null,
+      "take_profit": null,
+      "open_time": "2025-07-03 04:00:00",
+      "close_time": null,
+      "profit": null,
+      "commission": null,
+      "swap": null,
+      "source": "TradeSource.EXPERT_ADVISOR",
+      "status": "TradeStatus.OPEN",
+      "ea_name": null,
+      "ai_confidence": null,
+      "strategy_tags": [],
+      "notes": null
+    }
+  },
+  "ea_performances": {},
+  "performance_metrics": {
+    "system_start_time": "2025-07-05 01:07:37.777938",
+    "total_analyses": 0,
+    "total_trades": 0,
+    "successful_trades": 0,
+    "failed_trades": 0,
+    "api_calls": 1,
+    "errors": 0
+  },
+  "config": {
+    "system": {
+      "auto_trading": false,
+      "vision_auto_analysis": true,
+      "ea_monitoring": true,
+      "api_port": 5000,
+      "debug_mode": true,
+      "max_concurrent_trades": 10,
+      "risk_management": {
+        "max_daily_loss": 1000,
+        "max_drawdown": 0.2,
+        "position_size_limit": 1.0,
+        "emergency_close_drawdown": 0.2
+      }
+    },
+    "integration": {
+      "mt5_enabled": true,
+      "vision_enabled": true,
+      "dashboard_enabled": true,
+      "webhook_enabled": false,
+      "telegram_notifications": false
+    },
+    "ea_monitoring": {
+      "check_interval": 30,
+      "log_directory": "MQL5/Files/EA_Logs",
+      "enable_file_monitoring": true
+    },
+    "scheduling": {
+      "vision_analysis_interval": 300,
+      "health_check_interval": 60,
+      "performance_update_interval": 30,
+      "backup_interval": 3600
+    },
+    "alerts": {
+      "email_alerts": false,
+      "telegram_alerts": false,
+      "webhook_alerts": false,
+      "log_alerts": true
+    },
+    "vision": {
+      "primary_symbols": [
+        "EURUSD",
+        "GBPUSD",
+        "USDJPY"
+      ],
+      "timeframes": [
+        "H1",
+        "H4"
+      ]
+    }
+  },
+  "timestamp": "20250705_010738"
+}

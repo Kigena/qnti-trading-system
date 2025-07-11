@@ -1,0 +1,34 @@
+# QNTI External API Services Dependencies
+# Add these to your existing requirements.txt or install separately
+
+# News APIs
+newsapi-python>=0.2.6
+
+# Financial Data APIs
+alpha-vantage>=2.3.1
+finnhub-python>=2.4.10
+yfinance>=0.2.18
+polygon-api-client>=1.12.0
+
+# Social Media APIs
+praw>=7.7.0
+tweepy>=4.14.0
+
+# HTTP and async libraries
+requests>=2.31.0
+aiohttp>=3.8.0
+httpx>=0.24.0
+
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Caching (optional - for Redis)
+redis>=4.5.0
+
+# Rate limiting and utilities
+ratelimit>=2.2.1
+
+# Development dependencies
+pytest>=7.0.0
+pytest-asyncio>=0.21.0 

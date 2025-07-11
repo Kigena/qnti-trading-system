@@ -1,0 +1,39 @@
+{
+  "qnti_url": "http://localhost:5000",
+  "automation_settings": {
+    "browser_headless": true,
+    "timeout_seconds": 30,
+    "screenshot_on_error": true,
+    "max_retries": 3
+  },
+  "test_scenarios": {
+    "quick_test": {
+      "duration": 60,
+      "concurrent_users": 2,
+      "ea_strategies": [
+        "Trend Following Strategy",
+        "Mean Reversion Strategy"
+      ]
+    },
+    "standard_test": {
+      "duration": 300,
+      "concurrent_users": 5,
+      "ea_strategies": [
+        "Trend Following Strategy",
+        "Mean Reversion Strategy",
+        "Momentum Strategy",
+        "Scalping Strategy"
+      ]
+    },
+    "load_test": {
+      "duration": 1800,
+      "concurrent_users": 20,
+      "stress_testing": true
+    }
+  },
+  "performance_thresholds": {
+    "max_response_time": 5.0,
+    "min_success_rate": 0.95,
+    "max_error_rate": 0.05
+  }
+}

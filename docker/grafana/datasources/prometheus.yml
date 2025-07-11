@@ -1,0 +1,56 @@
+# Grafana Datasource Configuration for QNTI Trading System
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://qnti-prometheus:9090
+    isDefault: true
+    basicAuth: false
+    editable: true
+    jsonData:
+      timeInterval: "15s"
+      queryTimeout: "60s"
+      httpMethod: "POST"
+      customQueryParameters: ""
+      keepCookies: []
+    secureJsonData: {}
+    version: 1
+
+  - name: PostgreSQL
+    type: postgres
+    access: proxy
+    url: qnti-postgres:5432
+    database: qnti_trading
+    user: qnti_user
+    isDefault: false
+    basicAuth: false
+    editable: true
+    jsonData:
+      sslmode: "disable"
+      maxOpenConns: 0
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+      postgresVersion: 1300
+      timescaledb: false
+    secureJsonData:
+      password: qnti_password
+    version: 1
+
+  - name: Redis
+    type: redis-datasource
+    access: proxy
+    url: redis://qnti-redis:6379
+    isDefault: false
+    basicAuth: false
+    editable: true
+    jsonData:
+      poolSize: 5
+      timeout: 10
+      pingInterval: 0
+      pipelineWindow: 0
+    secureJsonData:
+      password: qnti_redis_pass
+    version: 1

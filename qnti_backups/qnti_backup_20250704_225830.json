@@ -1,0 +1,65 @@
+{
+  "trades": {},
+  "ea_performances": {},
+  "performance_metrics": {
+    "system_start_time": "2025-07-04 22:58:30.452555",
+    "total_analyses": 0,
+    "total_trades": 0,
+    "successful_trades": 0,
+    "failed_trades": 0,
+    "api_calls": 1,
+    "errors": 0
+  },
+  "config": {
+    "system": {
+      "auto_trading": false,
+      "vision_auto_analysis": true,
+      "ea_monitoring": true,
+      "api_port": 5000,
+      "debug_mode": true,
+      "max_concurrent_trades": 10,
+      "risk_management": {
+        "max_daily_loss": 1000,
+        "max_drawdown": 0.2,
+        "position_size_limit": 1.0,
+        "emergency_close_drawdown": 0.2
+      }
+    },
+    "integration": {
+      "mt5_enabled": true,
+      "vision_enabled": true,
+      "dashboard_enabled": true,
+      "webhook_enabled": false,
+      "telegram_notifications": false
+    },
+    "ea_monitoring": {
+      "check_interval": 30,
+      "log_directory": "MQL5/Files/EA_Logs",
+      "enable_file_monitoring": true
+    },
+    "scheduling": {
+      "vision_analysis_interval": 300,
+      "health_check_interval": 60,
+      "performance_update_interval": 30,
+      "backup_interval": 3600
+    },
+    "alerts": {
+      "email_alerts": false,
+      "telegram_alerts": false,
+      "webhook_alerts": false,
+      "log_alerts": true
+    },
+    "vision": {
+      "primary_symbols": [
+        "EURUSD",
+        "GBPUSD",
+        "USDJPY"
+      ],
+      "timeframes": [
+        "H1",
+        "H4"
+      ]
+    }
+  },
+  "timestamp": "20250704_225830"
+}
