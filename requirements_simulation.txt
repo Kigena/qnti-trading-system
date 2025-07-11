@@ -1,15 +1,9 @@
-requests==2.31.0
-websocket-client==1.6.4
-Pillow==10.0.1
-asyncio
-dataclasses
-threading
-logging
-json
-time
-datetime
-pathlib
-typing
-random
-io
-base64 
+# QNTI Simulation Requirements
+# External dependencies only (built-in modules removed)
+
+requests>=2.31.0
+websocket-client>=1.6.4
+Pillow>=10.0.1
+
+# Note: The following are built-in Python modules and should NOT be in requirements:
+# asyncio, dataclasses, threading, logging, json, time, datetime, pathlib, typing, random, io, base64 
