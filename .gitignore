@@ -23,6 +23,7 @@ MANIFEST
 
 # Virtual Environments
 qnti_automation_env/
+my_openai_env/
 venv/
 env/
 ENV/
