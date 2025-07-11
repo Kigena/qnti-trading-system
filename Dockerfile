@@ -114,6 +114,8 @@ RUN apt-get update && apt-get install -y \
     libjpeg62-turbo \
     libpng16-16 \
     curl \
+    netcat \
+    bash \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -142,9 +144,10 @@ RUN mkdir -p \
     /var/log/qnti \
     && chown -R qnti:qnti /app /var/log/qnti
 
-# Copy entrypoint script
-COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+# Copy entrypoint script from builder stage
+COPY --from=builder /app/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh && \
+    chown qnti:qnti /usr/local/bin/entrypoint.sh
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
@@ -160,7 +163,7 @@ EXPOSE 5000
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 # Default command
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--worker-class", "eventlet", "--worker-connections", "1000", "--timeout", "120", "--keepalive", "2", "--max-requests", "1000", "--max-requests-jitter", "50", "--preload", "qnti_main_system:app"]
+CMD ["python", "app.py"]
 
 # ==============================================================================
 # Stage 5: Development Image
@@ -195,6 +198,11 @@ RUN mkdir -p \
 RUN chown -R qnti:qnti /app && \
     chmod -R 755 /app
 
+# Copy and setup entrypoint script for development
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh && \
+    chown qnti:qnti /usr/local/bin/entrypoint.sh
+
 # Switch to non-root user
 USER qnti
 
@@ -210,7 +218,7 @@ ENV QNTI_ENV=development \
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 # Default development command
-CMD ["python", "qnti_main_system.py", "--debug", "--host", "0.0.0.0", "--port", "5000"]
+CMD ["python", "app.py"]
 
 # ==============================================================================
 # Metadata
