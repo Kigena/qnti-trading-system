@@ -207,115 +207,35 @@ except Exception as e:
 create_default_config() {
     log_info "Creating default configuration..."
     
-    # Create database configuration
-    cat > /app/db_config.json << EOF
+    # Create simple QNTI configuration
+    cat > /app/qnti_config.json << 'EOF'
 {
-    "host": "${QNTI_DB_HOST}",
-    "port": ${QNTI_DB_PORT},
-    "database": "${QNTI_DB_NAME}",
-    "username": "${QNTI_DB_USER}",
-    "password": "${QNTI_DB_PASSWORD}",
-    "schema": "${QNTI_DB_SCHEMA}",
-    "ssl_mode": "prefer",
-    "connect_timeout": 30,
-    "command_timeout": 60,
-    "pool_min_conn": 2,
-    "pool_max_conn": 10,
-    "pool_max_overflow": 20,
-    "pool_recycle": 3600,
-    "pool_pre_ping": true
-}
-EOF
-
-    # Create Redis configuration
-    cat > /app/redis_config.json << EOF
-{
-    "host": "${QNTI_REDIS_HOST}",
-    "port": ${QNTI_REDIS_PORT},
-    "password": "${QNTI_REDIS_PASSWORD}",
-    "db": 0,
-    "decode_responses": true,
-    "socket_timeout": 5,
-    "socket_connect_timeout": 5,
-    "retry_on_timeout": true,
-    "max_connections": 50
-}
-EOF
-
-    # Update QNTI configuration
-    python3 -c "
-import json
-import os
-
-config = {
-    'system': {
-        'auto_trading': False,
-        'vision_auto_analysis': True,
-        'ea_monitoring': True,
-        'api_port': 5000,
-        'debug_mode': os.environ.get('QNTI_DEBUG', 'false').lower() == 'true',
-        'max_concurrent_trades': 10,
-        'risk_management': {
-            'max_daily_loss': 1000,
-            'max_drawdown': 0.20,
-            'position_size_limit': 1.0,
-            'emergency_close_drawdown': 0.20
+    "system": {
+        "auto_trading": false,
+        "vision_auto_analysis": true,
+        "ea_monitoring": true,
+        "api_port": 5000,
+        "debug_mode": false,
+        "max_concurrent_trades": 10,
+        "risk_management": {
+            "max_daily_loss": 1000,
+            "max_drawdown": 0.20,
+            "position_size_limit": 1.0,
+            "emergency_close_drawdown": 0.20
         }
     },
-    'integration': {
-        'mt5_enabled': os.environ.get('QNTI_MT5_ENABLED', 'false').lower() == 'true',
-        'vision_enabled': True,
-        'dashboard_enabled': True,
-        'webhook_enabled': False,
-        'telegram_notifications': bool(os.environ.get('TELEGRAM_BOT_TOKEN')),
-        'redis_enabled': True,
-        'postgresql_enabled': True
-    },
-    'database': {
-        'host': os.environ.get('QNTI_DB_HOST'),
-        'port': int(os.environ.get('QNTI_DB_PORT', '5432')),
-        'name': os.environ.get('QNTI_DB_NAME'),
-        'user': os.environ.get('QNTI_DB_USER'),
-        'schema': os.environ.get('QNTI_DB_SCHEMA')
-    },
-    'redis': {
-        'host': os.environ.get('QNTI_REDIS_HOST'),
-        'port': int(os.environ.get('QNTI_REDIS_PORT', '6379'))
-    },
-    'mt5': {
-        'enabled': os.environ.get('QNTI_MT5_ENABLED', 'false').lower() == 'true',
-        'login': os.environ.get('QNTI_MT5_LOGIN', ''),
-        'password': os.environ.get('QNTI_MT5_PASSWORD', ''),
-        'server': os.environ.get('QNTI_MT5_SERVER', '')
-    },
-    'api_keys': {
-        'openai': os.environ.get('OPENAI_API_KEY', ''),
-        'telegram': os.environ.get('TELEGRAM_BOT_TOKEN', '')
-    },
-    'scheduling': {
-        'vision_analysis_interval': 300,
-        'health_check_interval': 60,
-        'performance_update_interval': 30,
-        'backup_interval': 3600
-    },
-    'alerts': {
-        'email_alerts': False,
-        'telegram_alerts': bool(os.environ.get('TELEGRAM_BOT_TOKEN')),
-        'webhook_alerts': False,
-        'log_alerts': True
-    },
-    'vision': {
-        'primary_symbols': ['EURUSD', 'GBPUSD', 'USDJPY'],
-        'timeframes': ['H1', 'H4']
+    "integration": {
+        "mt5_enabled": false,
+        "vision_enabled": true,
+        "dashboard_enabled": true,
+        "webhook_enabled": false,
+        "telegram_notifications": false,
+        "redis_enabled": false,
+        "postgresql_enabled": false
     }
 }
+EOF
 
-with open('/app/qnti_config.json', 'w') as f:
-    json.dump(config, f, indent=2)
-    
-print('Configuration created successfully')
-"
-    
     log_success "Default configuration created"
 }
 
@@ -385,8 +305,13 @@ fi
 # Create configuration
 create_default_config
 
-# Set permissions
-chown -R qnti:qnti /app/logs /app/qnti_data /app/ea_profiles /app/chart_uploads /app/qnti_screenshots /app/qnti_backups /app/qnti_memory 2>/dev/null || true
+# Create necessary directories
+mkdir -p /app/logs /app/qnti_data /app/ea_profiles /app/chart_uploads /app/qnti_screenshots /app/qnti_backups /app/qnti_memory
+
+# Set permissions (if running as root)
+if [ "$(id -u)" = "0" ]; then
+    chown -R qnti:qnti /app/logs /app/qnti_data /app/ea_profiles /app/chart_uploads /app/qnti_screenshots /app/qnti_backups /app/qnti_memory 2>/dev/null || true
+fi
 
 # Start application
 log_info "Starting QNTI application..."
